@@ -1,0 +1,10 @@
+/target
+/dist/*.app/Contents/Resources/mactriage
+*.bak.*
+# Built app bundles — produced by build-app.sh, never committed.
+/dist/build/
+/MacTriage.app/
+/MacTriage.app.bak.*/
+# Local backups and set-aside files, never committed.
+/Archive/
+.DS_Store
