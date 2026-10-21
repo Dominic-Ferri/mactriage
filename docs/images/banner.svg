@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="banner-title banner-desc">
+  <title id="banner-title">mactriage</title>
+  <desc id="banner-desc">Read-only triage of Mac crashes, panics, and hangs.</desc>
+  <rect width="1280" height="320" fill="#000000"/>
+  <rect x="0" y="0" width="14" height="320" fill="#C00027"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="96" y="170" fill="#F4BD47" font-size="104" font-weight="700" letter-spacing="-2">mactriage</text>
+    <text x="100" y="228" fill="#FFFFFF" font-size="30">Read-only triage of Mac crashes, panics, and hangs</text>
+  </g>
+  <g transform="translate(1000 92)">
+    <rect x="0" y="0" width="184" height="16" rx="8" fill="#C00027"/>
+    <rect x="0" y="30" width="152" height="16" rx="8" fill="#F4BD47"/>
+    <rect x="0" y="60" width="120" height="16" rx="8" fill="#F4BD47" fill-opacity="0.6"/>
+    <rect x="0" y="90" width="88" height="16" rx="8" fill="#FFFFFF" fill-opacity="0.45"/>
+    <rect x="0" y="120" width="56" height="16" rx="8" fill="#FFFFFF" fill-opacity="0.25"/>
+  </g>
+</svg>
