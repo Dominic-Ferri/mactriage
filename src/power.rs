@@ -48,6 +48,8 @@ pub struct BatteryIoreg {
     pub fully_charged: bool,
     pub instant_amperage_ma: Option<i64>,
     pub adapter_watts: Option<u32>,
+    /// `PermanentFailureStatus`: absent or 0 on a healthy battery.
+    pub permanent_failure: Option<u64>,
 }
 
 /// Parse `ioreg -r -c AppleSmartBattery -a`. None when there is no battery
@@ -84,7 +86,29 @@ pub fn parse_smart_battery(xml: &str) -> Option<BatteryIoreg> {
         fully_charged: flag(d, "FullyCharged"),
         instant_amperage_ma: signed(d, "InstantAmperage"),
         adapter_watts: adapter.and_then(|a| count(a, "Watts")),
+        permanent_failure: d
+            .get("PermanentFailureStatus")
+            .and_then(|v| v.as_unsigned_integer()),
     })
+}
+
+/// High when the battery's gas gauge has latched a permanent-failure flag.
+/// macOS can still call the condition "Good" in that state.
+pub fn permanent_failure_finding(b: &BatteryIoreg, health: &str) -> Option<Finding> {
+    let status = b.permanent_failure.filter(|&s| s != 0)?;
+    let mut f = Finding::new(
+        "snap.battery_health",
+        Severity::High,
+        "battery",
+        &format!("Battery reports a permanent failure (PermanentFailureStatus 0x{status:x})"),
+    );
+    f.detail = format!(
+        "The battery management system has latched a permanent-failure flag, while macOS shows \
+         the condition as \"{health}\". A battery in this state can stop charging or shut the \
+         Mac down under load."
+    );
+    f.next_step = Some("Book a battery service; do not rely on this Mac on battery power.".into());
+    Some(f)
 }
 
 pub fn read_battery_ioreg() -> Option<BatteryIoreg> {
@@ -135,7 +159,10 @@ fn battery_health(r: &mut PowerResult, ioreg: Option<&BatteryIoreg>) {
     let health = health.as_str();
 
     let mut flag = None;
-    if !health.eq_ignore_ascii_case("good") && health != "unknown" {
+    if let Some(f) = ioreg.and_then(|b| permanent_failure_finding(b, health)) {
+        flag = Some(Severity::High);
+        r.findings.push(f);
+    } else if !health.eq_ignore_ascii_case("good") && health != "unknown" {
         flag = Some(Severity::High);
         let mut f = Finding::new(
             "snap.battery_health",

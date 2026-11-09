@@ -32,6 +32,9 @@
   TUI and JSON (`coverage`) reports. Any source that was not read in full adds
   a recovery blocker that names it. Before, a Skipped SSD check did not stop
   the recovery assessment, so "no SSD finding" looked the same as "SSD fine".
+- `snap.battery_health` reads the battery's `PermanentFailureStatus`. A
+  nonzero value is High, even when macOS still shows the condition as Good.
+  The key is absent on a healthy battery.
 
 ## Documentation (2026-10-27)
 
