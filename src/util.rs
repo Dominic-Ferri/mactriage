@@ -35,6 +35,11 @@ pub struct Captured {
 /// Run a command with stdin closed and a hard wall-clock timeout. On expiry the
 /// child is killed and the output so far is kept. None only on spawn failure.
 pub fn capture(cmd: &str, args: &[&str], timeout: Duration) -> Option<Captured> {
+    // A bare name resolves through PATH, which under sudo can be user-writable.
+    debug_assert!(
+        cmd.starts_with('/'),
+        "run system tools by absolute path: {cmd}"
+    );
     let mut child = Command::new(cmd)
         .args(args)
         .stdin(Stdio::null())
@@ -125,6 +130,10 @@ pub fn stream_lines(
             ..Default::default()
         };
     }
+    debug_assert!(
+        cmd.starts_with('/'),
+        "run system tools by absolute path: {cmd}"
+    );
     let child = Command::new(cmd)
         .args(args)
         .stdout(Stdio::piped())

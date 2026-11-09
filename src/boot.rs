@@ -13,7 +13,7 @@ pub fn scan(categories: &HashSet<Category>, window_start: DateTime<Utc>) -> Vec<
     if !categories.contains(&Category::Boot) {
         return findings;
     }
-    let bt = run("sysctl", &["-n", "kern.boottime"]).unwrap_or_default();
+    let bt = run("/usr/sbin/sysctl", &["-n", "kern.boottime"]).unwrap_or_default();
     let boot_secs: Option<i64> = bt
         .split("sec =")
         .nth(1)

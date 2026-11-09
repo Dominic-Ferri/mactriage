@@ -17,7 +17,7 @@ pub fn scan(categories: &HashSet<Category>) -> Vec<Finding> {
 }
 
 fn apfs_snapshots(findings: &mut Vec<Finding>) {
-    let out = run("tmutil", &["listlocalsnapshots", "/"]).unwrap_or_default();
+    let out = run("/usr/bin/tmutil", &["listlocalsnapshots", "/"]).unwrap_or_default();
     // Lines like "com.apple.TimeMachine.2026-07-16-101112.local"
     let snaps: Vec<&str> = out
         .lines()
@@ -41,7 +41,7 @@ fn apfs_snapshots(findings: &mut Vec<Finding>) {
         .unwrap_or(0);
 
     // Purgeable space is what these snapshots (and caches) are holding hostage.
-    let purgeable = run("diskutil", &["info", "/"])
+    let purgeable = run("/usr/sbin/diskutil", &["info", "/"])
         .and_then(|o| {
             o.lines()
                 .find(|l| l.contains("Purgeable"))
@@ -53,7 +53,7 @@ fn apfs_snapshots(findings: &mut Vec<Finding>) {
     // thins automatically as space is needed, so a dozen is expected. Only flag
     // as a problem when they coincide with a genuinely full disk — the real
     // "I deleted everything and it's still full" case. Otherwise this is Info.
-    let disk_pct: u32 = run("df", &["-k", "/"])
+    let disk_pct: u32 = run("/bin/df", &["-k", "/"])
         .and_then(|o| {
             o.lines().nth(1).and_then(|l| {
                 l.split_whitespace()
@@ -119,7 +119,7 @@ fn apfs_snapshots(findings: &mut Vec<Finding>) {
 }
 
 fn time_machine(findings: &mut Vec<Finding>) {
-    let dest = run("tmutil", &["destinationinfo"]).unwrap_or_default();
+    let dest = run("/usr/bin/tmutil", &["destinationinfo"]).unwrap_or_default();
     if dest.contains("No destinations configured") {
         let mut f = Finding::new(
             "snap.tm_stale",
@@ -139,7 +139,7 @@ fn time_machine(findings: &mut Vec<Finding>) {
     if dest.trim().is_empty() {
         return; // tmutil unavailable / no Full Disk Access — stay quiet rather than guess
     }
-    let latest = run("tmutil", &["latestbackup"]).unwrap_or_default();
+    let latest = run("/usr/bin/tmutil", &["latestbackup"]).unwrap_or_default();
     let stamp = latest
         .trim()
         .rsplit('/')

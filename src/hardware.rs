@@ -574,7 +574,9 @@ pub fn assess_input(
 /// itself can't run: an unreadable registry must not read as "desktop Mac".
 pub fn input_check() -> Result<(Vec<Finding>, Vital), String> {
     // `run` is None only when ioreg fails; a class with no instances is Some("").
-    let q = |args: &[&str]| run("ioreg", args).ok_or_else(|| "ioreg could not run".to_string());
+    let q = |args: &[&str]| {
+        run("/usr/sbin/ioreg", args).ok_or_else(|| "ioreg could not run".to_string())
+    };
     let battery = q(&["-r", "-c", "AppleSmartBattery", "-a"])?;
     let laptop = crate::power::parse_smart_battery(&battery)
         .map(|b| b.installed)

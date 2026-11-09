@@ -7,7 +7,7 @@ use std::time::Duration;
 
 /// Boot instant from kern.boottime, for boot-phase noise detection.
 pub fn boot_time() -> Option<chrono::DateTime<chrono::Utc>> {
-    let bt = run("sysctl", &["-n", "kern.boottime"])?; // "{ sec = 1752618000, usec = 0 } ..."
+    let bt = run("/usr/sbin/sysctl", &["-n", "kern.boottime"])?; // "{ sec = 1752618000, usec = 0 } ..."
     let secs = bt
         .split("sec =")
         .nth(1)?
@@ -138,10 +138,13 @@ pub fn scan(categories: &HashSet<Category>, root: bool) -> SnapshotResult {
 }
 
 fn memory(r: &mut SnapshotResult) {
-    let level: u32 = run("sysctl", &["-n", "kern.memorystatus_vm_pressure_level"])
-        .and_then(|s| s.trim().parse().ok())
-        .unwrap_or(1);
-    let free_pct = run("memory_pressure", &["-Q"])
+    let level: u32 = run(
+        "/usr/sbin/sysctl",
+        &["-n", "kern.memorystatus_vm_pressure_level"],
+    )
+    .and_then(|s| s.trim().parse().ok())
+    .unwrap_or(1);
+    let free_pct = run("/usr/bin/memory_pressure", &["-Q"])
         .and_then(|o| {
             o.lines()
                 .find(|l| l.contains("free percentage"))
@@ -152,7 +155,7 @@ fn memory(r: &mut SnapshotResult) {
                 })
         })
         .unwrap_or_default();
-    let swap = run("sysctl", &["-n", "vm.swapusage"]).unwrap_or_default();
+    let swap = run("/usr/sbin/sysctl", &["-n", "vm.swapusage"]).unwrap_or_default();
     // "total = 4096.00M  used = 2848.75M  free = 1247.25M  (encrypted)"
     let get_mb = |key: &str| -> f64 {
         swap.split(&format!("{key} ="))
@@ -236,7 +239,7 @@ fn memory(r: &mut SnapshotResult) {
 }
 
 fn thermal(r: &mut SnapshotResult, root: bool) {
-    let therm = run("pmset", &["-g", "therm"]).unwrap_or_default();
+    let therm = run("/usr/bin/pmset", &["-g", "therm"]).unwrap_or_default();
     let speed_limit: Option<u32> = therm
         .lines()
         .find(|l| l.contains("CPU_Speed_Limit"))
@@ -274,7 +277,7 @@ fn thermal(r: &mut SnapshotResult, root: bool) {
     }
     if root {
         let (pm, _) = run_with_timeout(
-            "powermetrics",
+            "/usr/bin/powermetrics",
             &["--samplers", "thermal", "-n", "1", "-i", "500"],
             Duration::from_secs(15),
         );
@@ -348,7 +351,7 @@ pub fn boot_physical_disk() -> String {
 }
 
 fn disk(r: &mut SnapshotResult) {
-    let df = run("df", &["-k", "/"]).unwrap_or_default();
+    let df = run("/bin/df", &["-k", "/"]).unwrap_or_default();
     let mut pct_full = 0u32;
     let mut free_bytes = 0u64;
     if let Some(line) = df.lines().nth(1) {
@@ -359,7 +362,7 @@ fn disk(r: &mut SnapshotResult) {
         }
     }
     let whole_disk = boot_physical_disk();
-    let smart = run("diskutil", &["info", &whole_disk])
+    let smart = run("/usr/sbin/diskutil", &["info", &whole_disk])
         .and_then(|o| {
             o.lines()
                 .find(|l| l.contains("SMART Status"))
@@ -432,10 +435,10 @@ fn disk(r: &mut SnapshotResult) {
 }
 
 fn load_and_procs(r: &mut SnapshotResult) {
-    let cores: f64 = run("sysctl", &["-n", "hw.ncpu"])
+    let cores: f64 = run("/usr/sbin/sysctl", &["-n", "hw.ncpu"])
         .and_then(|s| s.trim().parse().ok())
         .unwrap_or(1.0);
-    let load: f64 = run("sysctl", &["-n", "vm.loadavg"])
+    let load: f64 = run("/usr/sbin/sysctl", &["-n", "vm.loadavg"])
         .and_then(|s| {
             s.trim()
                 .trim_start_matches('{')
@@ -466,7 +469,7 @@ fn load_and_procs(r: &mut SnapshotResult) {
     });
 
     // v0.2.0: name the culprit instead of just reporting a number.
-    let ps = run("ps", &["-Aceo", "pcpu=,pmem=,comm=", "-r"]).unwrap_or_default();
+    let ps = run("/bin/ps", &["-Aceo", "pcpu=,pmem=,comm=", "-r"]).unwrap_or_default();
     let mut top: Vec<(f64, f64, String)> = Vec::new();
     for line in ps.lines().take(8) {
         let mut it = line.split_whitespace();
@@ -526,7 +529,7 @@ fn load_and_procs(r: &mut SnapshotResult) {
 
     // Name the process holding the most RAM right now — jetsam findings name the
     // historical hog; nothing here named the current one.
-    let psm = run("ps", &["-Aceo", "pmem=,comm=", "-m"]).unwrap_or_default();
+    let psm = run("/bin/ps", &["-Aceo", "pmem=,comm=", "-m"]).unwrap_or_default();
     if let Some(line) = psm.lines().next() {
         let mut it = line.split_whitespace();
         if let Some(pmem) = it.next() {
