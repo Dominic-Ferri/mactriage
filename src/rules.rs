@@ -75,6 +75,7 @@ pub const RULES: &[RuleInfo] = &[
     RuleInfo { id: "audit.kext_inventory", category: "kexts", severity: "info", source: "kmutil showloaded, systemextensionsctl", detects: "Third-party kernel/system extensions active (prime panic suspects)" },
     RuleInfo { id: "audit.install_history", category: "updates", severity: "info", source: "/Library/Receipts/InstallHistory.plist", detects: "Software installed in the window (feeds post-update correlation)" },
     RuleInfo { id: "posture.sip_disabled", category: "posture", severity: "medium", source: "csrutil status", detects: "System Integrity Protection disabled" },
+    RuleInfo { id: "posture.ssv_disabled", category: "posture", severity: "high", source: "csrutil authenticated-root status, diskutil info /", detects: "Signed system volume off or broken: authenticated root disabled, or the system volume is not sealed" },
     RuleInfo { id: "posture.gatekeeper_off", category: "posture", severity: "medium", source: "spctl --status", detects: "Gatekeeper assessment disabled" },
     RuleInfo { id: "posture.filevault_off", category: "posture", severity: "low", source: "fdesetup status", detects: "FileVault off (data at rest unencrypted)" },
     RuleInfo { id: "posture.firewall_off", category: "posture", severity: "medium", source: "socketfilterfw", detects: "Application firewall off" },

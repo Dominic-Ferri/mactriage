@@ -44,6 +44,11 @@
     owner, so this adds a blocker. The SecureToken vital shows a count only.
   - An MDM enrollment says whether it came from Automated Device Enrollment,
     which decides whether the Mac enrolls again by itself after an erase.
+- A new rule, `posture.ssv_disabled` (High), checks the signed system volume:
+  `csrutil authenticated-root status` and the `Sealed` value from
+  `diskutil info /`. Authenticated root off, or a seal that is not "Yes",
+  leads the recovery assessment to a reinstall without erasing. An unreadable
+  answer is listed as not verified, never as a pass.
 
 ## Documentation (2026-10-27)
 
