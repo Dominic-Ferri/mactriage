@@ -303,6 +303,18 @@ fn footer(report: &Report, style: &Style, out: &mut String) {
     for note in &report.notes {
         out.push_str(&format!("  {}\n", style.paint("2", note)));
     }
+    if !report.coverage.is_empty() {
+        out.push_str(&format!("{}\n", style.paint("2", "Coverage")));
+        for c in &report.coverage {
+            out.push_str(&format!(
+                "  {}\n",
+                style.paint(
+                    "2",
+                    &format!("· {}: {} — {}", c.source, c.status.label(), c.detail)
+                )
+            ));
+        }
+    }
     if !report.skipped.is_empty() {
         out.push_str(&format!("{}\n", style.paint("2", "Skipped")));
         for s in &report.skipped {

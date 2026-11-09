@@ -26,6 +26,12 @@
   whole window oldest-first, so a timeout dropped the newest events, which are
   usually the ones the user is calling about. Now a timeout drops the oldest
   slices, and the report note says how much of the window was read in full.
+- A full scan lists four recovery-critical sources under Coverage: report
+  files, panic records, the unified log, and SSD health. Each is read,
+  partial, or not read, with the reason. The list is in the terminal, HTML,
+  TUI and JSON (`coverage`) reports. Any source that was not read in full adds
+  a recovery blocker that names it. Before, a Skipped SSD check did not stop
+  the recovery assessment, so "no SSD finding" looked the same as "SSD fine".
 
 ## Documentation (2026-10-27)
 

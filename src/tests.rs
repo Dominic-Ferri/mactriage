@@ -52,6 +52,7 @@ fn overall_condition_reports_how_serious_the_findings_are() {
         recovery: None,
         stats: Default::default(),
         log_events: vec![],
+        coverage: Vec::new(),
     };
 
     assert_eq!(report.overall_condition(), OverallCondition::Healthy);
@@ -231,6 +232,7 @@ fn min_severity_report_exit() {
         recovery: None,
         stats: Default::default(),
         log_events: vec![],
+        coverage: Vec::new(),
     };
     assert_eq!(report.exit_code(), 30);
     report.findings.retain(|f| f.severity >= Severity::Critical);
@@ -570,6 +572,7 @@ fn recovery_assessment_renders_in_terminal_html_and_json() {
         recovery: None,
         stats: Default::default(),
         log_events: vec![],
+        coverage: Vec::new(),
     };
     report.recovery = Some(crate::recovery::assess(&report, true));
 
@@ -615,6 +618,7 @@ fn log_events_serialize_only_when_present() {
         recovery: None,
         stats: Default::default(),
         log_events: vec![],
+        coverage: Vec::new(),
     };
 
     let json = serde_json::to_value(&report).unwrap();
@@ -638,6 +642,70 @@ fn log_events_serialize_only_when_present() {
     old.as_object_mut().unwrap().remove("log_events");
     let decoded: crate::report::Report = serde_json::from_value(old).unwrap();
     assert!(decoded.log_events.is_empty());
+}
+
+#[test]
+fn unread_recovery_sources_block_an_erase() {
+    use crate::report::{CleanInstallStatus, Coverage, CoverageStatus, RecoveryRecommendation};
+    let mut report = crate::report::Report {
+        schema_version: crate::report::SCHEMA_VERSION,
+        tool: crate::report::TOOL_NAME.into(),
+        tool_version: crate::report::TOOL_VERSION.into(),
+        generated_at: chrono::Utc::now(),
+        scan_window: "test".into(),
+        window_since: None,
+        window_until: None,
+        complete: true,
+        host: crate::host::host_info(false),
+        vitals: vec![],
+        findings: vec![Finding::new(
+            "log.software_update",
+            Severity::Low,
+            "updates",
+            "update failed",
+        )],
+        skipped: vec![],
+        notes: vec![],
+        recovery: None,
+        stats: Default::default(),
+        log_events: vec![],
+        coverage: ["report files", "panic records", "unified log", "SSD health"]
+            .map(|source| Coverage {
+                source: source.into(),
+                status: CoverageStatus::Read,
+                detail: "ok".into(),
+            })
+            .to_vec(),
+    };
+    report.host.root = true;
+
+    // Control: everything read, so the reinstall tier has no coverage blocker.
+    let a = crate::recovery::assess(&report, true);
+    assert_eq!(
+        a.recommendation,
+        RecoveryRecommendation::ReinstallMacosInPlace
+    );
+    assert!(!a.blockers.iter().any(|b| b.contains("until it is read")));
+    assert_eq!(a.clean_install, CleanInstallStatus::NotYetJustified);
+
+    report.coverage[3].status = CoverageStatus::NotRead;
+    report.coverage[3].detail = "smartctl not bundled or installed".into();
+    let a = crate::recovery::assess(&report, true);
+    assert!(
+        a.blockers
+            .iter()
+            .any(|b| b.starts_with("SSD health was not read (smartctl not bundled")),
+        "{:?}",
+        a.blockers
+    );
+    assert_eq!(a.clean_install, CleanInstallStatus::Blocked);
+
+    // The JSON carries the coverage list, and an old report without it loads.
+    let mut json = serde_json::to_value(&report).unwrap();
+    assert_eq!(json["coverage"][3]["status"], "not_read");
+    json.as_object_mut().unwrap().remove("coverage");
+    let decoded: crate::report::Report = serde_json::from_value(json).unwrap();
+    assert!(decoded.coverage.is_empty());
 }
 
 // Real lines from the 2026-09-08 field report that were counted as findings
