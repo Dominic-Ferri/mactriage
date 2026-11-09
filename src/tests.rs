@@ -1847,6 +1847,30 @@ fn battery_xml(
 }
 
 #[test]
+fn battery_permanent_failure_is_high() {
+    use crate::power::{parse_smart_battery, permanent_failure_finding};
+    let with_status = |v: u64| {
+        battery_xml(false, false, false, -500, 300, None).replace(
+            "<key>CycleCount</key>",
+            &format!(
+                "<key>PermanentFailureStatus</key><integer>{v}</integer><key>CycleCount</key>"
+            ),
+        )
+    };
+    // Absent (the healthy case on real Macs) and 0 are not findings.
+    let absent = parse_smart_battery(&battery_xml(false, false, false, -500, 300, None)).unwrap();
+    assert_eq!(absent.permanent_failure, None);
+    assert!(permanent_failure_finding(&absent, "Good").is_none());
+    let zero = parse_smart_battery(&with_status(0)).unwrap();
+    assert!(permanent_failure_finding(&zero, "Good").is_none());
+    let failed = parse_smart_battery(&with_status(0x40)).unwrap();
+    let f = permanent_failure_finding(&failed, "Good").expect("nonzero status flags");
+    assert_eq!(f.severity, Severity::High);
+    assert!(f.summary.contains("0x40"));
+    assert!(f.detail.contains("\"Good\""));
+}
+
+#[test]
 fn battery_ioreg_parsing_and_rated_cycles() {
     use crate::power::{parse_smart_battery, past_rated_cycles};
     let b = parse_smart_battery(&battery_xml(false, false, false, -797, 21, None)).expect("parses");
