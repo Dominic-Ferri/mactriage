@@ -19,6 +19,10 @@ pub enum Severity {
     Critical,
 }
 
+/// Exit code of an UNKNOWN report: incomplete, nothing above Info. It must not
+/// read as 0 (healthy), because sources that were not read may hold problems.
+pub const EXIT_UNKNOWN: i32 = 50;
+
 impl Severity {
     pub fn exit_code(self) -> i32 {
         match self {
@@ -384,7 +388,10 @@ impl Report {
     }
 
     pub fn exit_code(&self) -> i32 {
-        self.worst().map(|s| s.exit_code()).unwrap_or(0)
+        match self.overall_condition() {
+            OverallCondition::Unknown => EXIT_UNKNOWN,
+            _ => self.worst().map(|s| s.exit_code()).unwrap_or(0),
+        }
     }
 
     /// Sort by severity desc, then most recent first; cap per category unless --full.

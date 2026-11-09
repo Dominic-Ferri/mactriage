@@ -42,7 +42,7 @@ use scan::{ScanOpts, SecurityOpts, SnapshotOpts};
 /// powermetrics thermal sampling, Wi-Fi quality, background-item audit).
 ///
 /// Exit codes: 0 healthy, 10/20/30/40 = worst finding is low/medium/high/fatal,
-/// 2 usage, 70 internal error.
+/// 50 unknown (incomplete scan, nothing above info), 2 usage, 70 internal error.
 #[derive(Parser)]
 #[command(name = "mactriage", version, max_term_width = 100)]
 struct Cli {

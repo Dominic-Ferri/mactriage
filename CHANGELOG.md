@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0 (2026-11-09)
+
+- An UNKNOWN scan now exits with code 50. Before, an incomplete scan with
+  nothing above Info exited 0, the same code as a healthy scan, so a script
+  could read a scan that missed sources as a clean result.
+
 ## Documentation (2026-10-27)
 
 The repository now has the MIT license file that `Cargo.toml` already
