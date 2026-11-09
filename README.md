@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2012%2B-F4BD47?style=flat-square&logo=apple&logoColor=white&labelColor=000000" alt="Platform: macOS 12 or later">
   <img src="https://img.shields.io/badge/language-Rust-C00027?style=flat-square&logo=rust&logoColor=white&labelColor=000000" alt="Language: Rust">
-  <img src="https://img.shields.io/badge/version-0.13.0-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.13.0">
+  <img src="https://img.shields.io/badge/version-0.14.0-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.14.0">
   <img src="https://img.shields.io/badge/license-MIT-C00027?style=flat-square&labelColor=000000" alt="License: MIT">
   <img src="https://img.shields.io/badge/mode-read--only-C00027?style=flat-square&labelColor=000000" alt="Mode: read-only">
 </p>
@@ -376,7 +376,7 @@ Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads 
 <details>
 <summary><b>Rule list</b></summary>
 
-There are 112 rules. The table splits the 39 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, and what it detects.
+There are 114 rules. The table splits the 40 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, and what it detects.
 
 | Group | Count | Rule IDs |
 |---|---|---|
@@ -384,9 +384,9 @@ There are 112 rules. The table splits the 39 security rules into three rows. `ma
 | Unified log | 19 | `log.shutdown_cause`, `log.crash_reported`, `log.jetsam`, `log.watchdog`, `log.thermal`, `log.io_errors`, `log.gpu_reset`, `log.launchd_services`, `log.spotlight`, `log.kext`, `log.usb_tb`, `log.sleep_wake`, `log.wifi`, `log.mdnsresponder`, `log.bluetooth`, `log.gatekeeper`, `log.keychain`, `log.software_update`, `log.backupd` |
 | Live | 23 | `snap.memory_pressure`, `snap.swap_heavy`, `snap.thermal_throttle`, `snap.disk_full`, `snap.smart`, `snap.load`, `snap.top_procs`, `snap.top_mem`, `snap.windowserver`, `snap.apfs_snapshots`, `snap.tm_stale`, `snap.ssd_wear`, `snap.battery_health`, `snap.charger`, `snap.input_devices`, `snap.input_controller`, `snap.lid_angle`, `snap.power_assertions`, `snap.darkwake_storm`, `snap.net_offline`, `snap.gateway_down`, `snap.dns_failing`, `snap.wifi_quality` |
 | Audit | 5 | `audit.launch_broken`, `audit.launch_inventory`, `audit.btm_orphan`, `audit.kext_inventory`, `audit.install_history` |
-| Posture | 6 | `posture.sip_disabled`, `posture.gatekeeper_off`, `posture.filevault_off`, `posture.firewall_off`, `posture.xprotect_stale`, `posture.mdm_profiles` |
+| Posture | 7 | `posture.sip_disabled`, `posture.ssv_disabled`, `posture.gatekeeper_off`, `posture.filevault_off`, `posture.firewall_off`, `posture.xprotect_stale`, `posture.mdm_profiles` |
 | Security: network | 17 | `sec.wifi_open`, `sec.wifi_weak`, `sec.wifi_unknown`, `sec.firewall_stealth_off`, `sec.firewall_allow_signed`, `sec.remote_access`, `sec.listener_exposed`, `sec.listener_apple`, `sec.internet_sharing`, `sec.dns_public`, `sec.proxy_set`, `sec.hosts_redirect`, `sec.hosts_block`, `sec.traffic_extensions`, `sec.firewall_exception_risky`, `sec.firewall_exception_stale`, `sec.ssh_weak_auth` |
-| Security: system and accounts | 12 | `sec.auto_updates_off`, `sec.update_deferred`, `sec.screen_lock_weak`, `sec.autologin_on`, `sec.guest_enabled`, `sec.admin_accounts`, `sec.updates_pending`, `sec.update_scan_stale`, `sec.boot_args`, `sec.privileged_launch_writable`, `sec.uid0_extra`, `sec.root_enabled` |
+| Security: system and accounts | 13 | `sec.auto_updates_off`, `sec.update_deferred`, `sec.screen_lock_weak`, `sec.autologin_on`, `sec.guest_enabled`, `sec.admin_accounts`, `sec.securetoken_none`, `sec.updates_pending`, `sec.update_scan_stale`, `sec.boot_args`, `sec.privileged_launch_writable`, `sec.uid0_extra`, `sec.root_enabled` |
 | Security: MDM and trust | 10 | `sec.mdm_not_approved`, `sec.bootstrap_token`, `sec.jamf_broken`, `sec.jamf_unreachable`, `sec.profile_inventory`, `sec.managed_prefs`, `sec.custom_trust`, `sec.mdm_mismatch`, `sec.managed_extension_inactive`, `sec.jamf_checkin_stale` |
 | Boot | 1 | `boot.slow_boot` |
 | Correlation | 5 | `correlate.crash_loop`, `correlate.story`, `correlate.panic_kext`, `correlate.post_update`, `correlate.spotlight_stack` |
@@ -395,7 +395,7 @@ There are 112 rules. The table splits the 39 security rules into three rows. `ma
 
 ## History
 
-The v0.1.0 source is lost. v0.2.0 is a full rewrite that kept the same rule IDs and command line. v0.3.0 fixed trust and correctness problems. Later versions added the dashboard, the recovery assessment, the security audit, and hardware checks. Since 0.11.1, most changes tune rules that raised false alarms on real Macs. Version 0.12.0 hardened the security audit and the app launchers. Version 0.13.0 checks the keyboard/trackpad controller and the lid angle sensor. See [CHANGELOG.md](CHANGELOG.md) for the reason behind each change.
+The v0.1.0 source is lost. v0.2.0 is a full rewrite that kept the same rule IDs and command line. v0.3.0 fixed trust and correctness problems. Later versions added the dashboard, the recovery assessment, the security audit, and hardware checks. Since 0.11.1, most changes tune rules that raised false alarms on real Macs. Version 0.12.0 hardened the security audit and the app launchers. Version 0.13.0 checks the keyboard/trackpad controller and the lid angle sensor. Version 0.14.0 reads the unified log newest first, reports which recovery-critical sources were read, and checks what could block an erase. See [CHANGELOG.md](CHANGELOG.md) for the reason behind each change.
 
 ## License
 
