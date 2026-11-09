@@ -25,8 +25,22 @@ pub fn assess(report: &Report, full_recovery_coverage: bool) -> RecoveryAssessme
         &report.host.chip,
         smart_verified,
     );
-    // A source that was not read cannot rule anything out, so name it.
     if assessment.recommendation != RecoveryRecommendation::NoEraseNeeded {
+        if report.host.activation_lock == Some(true) {
+            assessment.next_steps.push(
+                "Activation Lock is on: before any erase or DFU Restore, have the user's Apple Account password, or the Activation Lock bypass code from MDM."
+                    .into(),
+            );
+        }
+        let mdm = report.vitals.iter().find(|v| v.label == "MDM");
+        if let Some(v) = mdm.filter(|v| v.value.contains('(')) {
+            assessment.reasons.push(if v.value.ends_with("(DEP)") {
+                "The Mac is enrolled through Automated Device Enrollment, so it enrolls in MDM again during Setup Assistant after an erase.".into()
+            } else {
+                "MDM enrollment did not come from Automated Device Enrollment; after an erase, the Mac must be enrolled again by hand.".into()
+            });
+        }
+        // A source that was not read cannot rule anything out, so name it.
         for c in report
             .coverage
             .iter()
@@ -287,6 +301,17 @@ fn assess_findings(
     if backup_problem && assessment.recommendation != RecoveryRecommendation::NoEraseNeeded {
         assessment.blockers.push(
             "No current successful full backup is proven; do not erase or use DFU Restore.".into(),
+        );
+        if assessment.clean_install == CleanInstallStatus::NotYetJustified {
+            assessment.clean_install = CleanInstallStatus::Blocked;
+        }
+    }
+    if has_rule(findings, "sec.securetoken_none")
+        && assessment.recommendation != RecoveryRecommendation::NoEraseNeeded
+    {
+        assessment.blockers.push(
+            "No admin holds a SecureToken; on Apple silicon a reinstall or erase needs a volume owner, so give an admin a SecureToken first."
+                .into(),
         );
         if assessment.clean_install == CleanInstallStatus::NotYetJustified {
             assessment.clean_install = CleanInstallStatus::Blocked;

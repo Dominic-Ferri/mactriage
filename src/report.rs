@@ -221,6 +221,9 @@ pub struct HostInfo {
     /// Boot drive, e.g. "APPLE SSD AP0512Z · 500.3 GB" (empty in reports from < 0.11).
     #[serde(default)]
     pub storage: String,
+    /// Activation Lock from system_profiler; None when it does not say.
+    #[serde(default)]
+    pub activation_lock: Option<bool>,
 }
 
 impl HostInfo {

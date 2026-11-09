@@ -37,6 +37,11 @@ pub fn host_info(root: bool) -> HostInfo {
             .unwrap_or(0);
         human_duration(secs)
     };
+    let hardware = run(
+        "/usr/sbin/system_profiler",
+        &["SPHardwareDataType", "-json"],
+    )
+    .and_then(|o| serde_json::from_str::<serde_json::Value>(&o).ok());
     HostInfo {
         model: sysctl("hw.model"),
         chip: sysctl("machdep.cpu.brand_string"),
@@ -52,20 +57,28 @@ pub fn host_info(root: bool) -> HostInfo {
         arch: std::env::consts::ARCH.into(),
         uptime,
         root,
-        model_name: run(
-            "/usr/sbin/system_profiler",
-            &["SPHardwareDataType", "-json"],
-        )
-        .and_then(|o| serde_json::from_str::<serde_json::Value>(&o).ok())
-        .and_then(|v| {
-            v.pointer("/SPHardwareDataType/0/machine_name")
-                .and_then(|n| n.as_str())
-                .map(String::from)
-        })
-        .unwrap_or_default(),
+        model_name: hardware
+            .as_ref()
+            .and_then(|v| v.pointer("/SPHardwareDataType/0/machine_name"))
+            .and_then(|n| n.as_str())
+            .map(String::from)
+            .unwrap_or_default(),
         storage: run("/usr/sbin/diskutil", &["info", &boot_physical_disk()])
             .map(|o| parse_disk_identity(&o))
             .unwrap_or_default(),
+        activation_lock: hardware.as_ref().and_then(parse_activation_lock),
+    }
+}
+
+/// `activation_lock_status` from `system_profiler SPHardwareDataType -json`.
+pub fn parse_activation_lock(v: &serde_json::Value) -> Option<bool> {
+    match v
+        .pointer("/SPHardwareDataType/0/activation_lock_status")?
+        .as_str()?
+    {
+        "activation_lock_enabled" => Some(true),
+        "activation_lock_disabled" => Some(false),
+        _ => None,
     }
 }
 
