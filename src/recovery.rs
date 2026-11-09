@@ -6,8 +6,8 @@
 //! satisfied before an erase is even considered.
 
 use crate::report::{
-    CleanInstallStatus, Confidence, Finding, RecoveryAssessment, RecoveryRecommendation, Report,
-    Severity,
+    CleanInstallStatus, Confidence, CoverageStatus, Finding, RecoveryAssessment,
+    RecoveryRecommendation, Report, Severity,
 };
 
 pub fn assess(report: &Report, full_recovery_coverage: bool) -> RecoveryAssessment {
@@ -18,13 +18,32 @@ pub fn assess(report: &Report, full_recovery_coverage: bool) -> RecoveryAssessme
         .vitals
         .iter()
         .any(|v| v.label == "Disk" && v.value.contains("SMART verified"));
-    assess_findings(
+    let mut assessment = assess_findings(
         &report.findings,
         report.complete,
         full_recovery_coverage && report.host.root,
         &report.host.chip,
         smart_verified,
-    )
+    );
+    // A source that was not read cannot rule anything out, so name it.
+    if assessment.recommendation != RecoveryRecommendation::NoEraseNeeded {
+        for c in report
+            .coverage
+            .iter()
+            .filter(|c| c.status != CoverageStatus::Read)
+        {
+            assessment.blockers.push(format!(
+                "{} was {} ({}); do not erase or use DFU Restore until it is read.",
+                c.source,
+                c.status.label(),
+                c.detail
+            ));
+            if assessment.clean_install == CleanInstallStatus::NotYetJustified {
+                assessment.clean_install = CleanInstallStatus::Blocked;
+            }
+        }
+    }
+    assessment
 }
 
 fn assess_findings(

@@ -107,11 +107,28 @@ pub fn render(report: &Report) -> String {
         })
         .unwrap_or_default();
 
-    let skipped = if report.skipped.is_empty() {
+    let coverage = if report.coverage.is_empty() {
         String::new()
     } else {
         format!(
-            "<h2>Skipped</h2><ul>{}</ul>",
+            "<h2>Coverage</h2><ul>{}</ul>",
+            report
+                .coverage
+                .iter()
+                .map(|c| format!(
+                    "<li><b>{}</b>: {} — {}</li>",
+                    esc(&c.source),
+                    c.status.label(),
+                    esc(&c.detail)
+                ))
+                .collect::<String>()
+        )
+    };
+    let skipped = if report.skipped.is_empty() {
+        coverage
+    } else {
+        format!(
+            "{coverage}<h2>Skipped</h2><ul>{}</ul>",
             report
                 .skipped
                 .iter()

@@ -269,10 +269,13 @@ fn evidence_excerpt(h: &SsdHealth) -> String {
 }
 
 /// Run smartctl against `disk` (e.g. "disk0") and assess the result.
+/// The `Skipped.what` of an SSD check that did not run; scan.rs keys on it.
+pub const SSD_WEAR_SOURCE: &str = "SSD wear (smartctl)";
+
 pub fn ssd_check(disk: &str) -> SsdOutcome {
     let skip = |reason: String| SsdOutcome {
         skipped: Some(Skipped {
-            what: "SSD wear (smartctl)".into(),
+            what: SSD_WEAR_SOURCE.into(),
             reason,
         }),
         ..Default::default()

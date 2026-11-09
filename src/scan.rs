@@ -1,7 +1,7 @@
 //! Scan orchestration shared by the classic CLI, the TUI worker, and watch mode.
 
 use crate::progress::{CancellationToken, Reporter};
-use crate::report::{Category, Finding, Report, Severity};
+use crate::report::{Category, Coverage, CoverageStatus, Finding, Report, Severity};
 use crate::{
     audit, boot, correlate, files, host, logscan, netcheck, power, recovery, security, storage,
     util, watch,
@@ -257,6 +257,7 @@ pub fn collect_scan(
         recovery: None,
         stats: Default::default(),
         log_events: Vec::new(),
+        coverage: Vec::new(),
     };
     if !root {
         report.skipped.push(crate::report::Skipped {
@@ -292,10 +293,56 @@ pub fn collect_scan(
                 .into(),
         });
     }
+    let denied = &file_res.denied_dirs;
+    report.coverage.push(Coverage {
+        source: "report files".into(),
+        status: if denied.is_empty() {
+            CoverageStatus::Read
+        } else {
+            CoverageStatus::Partial
+        },
+        detail: if denied.is_empty() {
+            format!(
+                "{} files since {}",
+                file_res.files_scanned,
+                files_since.with_timezone(&Local).format("%Y-%m-%d %H:%M")
+            )
+        } else {
+            format!("{} folder(s) denied; grant Full Disk Access", denied.len())
+        },
+    });
+    let panic_dir = "/var/db/PanicReporter";
+    let (status, detail) = if !root {
+        (CoverageStatus::NotRead, "root only; re-run with sudo")
+    } else if denied.iter().any(|d| d.starts_with(panic_dir)) {
+        (
+            CoverageStatus::NotRead,
+            "permission denied; grant Full Disk Access",
+        )
+    } else if !cats.contains(&Category::Panics) {
+        (CoverageStatus::NotRead, "panics category not selected")
+    } else {
+        (CoverageStatus::Read, panic_dir)
+    };
+    report.coverage.push(Coverage {
+        source: "panic records".into(),
+        status,
+        detail: detail.into(),
+    });
 
+    let read_in_full = |read_since: Option<DateTime<Utc>>| match read_since {
+        Some(t) => format!(
+            "the newest {} (from {}) was read in full; older events were read only in part",
+            crate::util::human_duration((until - t).num_seconds().max(0) as u64),
+            t.with_timezone(&Local).format("%Y-%m-%d %H:%M")
+        ),
+        None => "even the newest slice of the window was read only in part".into(),
+    };
     let mut cancelled = cancel.is_cancelled();
     let mut log_findings = Vec::new();
+    let mut log_cov = (CoverageStatus::NotRead, "scan cancelled".to_string());
     if opts.no_log {
+        log_cov.1 = "skipped (--no-log)".into();
         report.skipped.push(crate::report::Skipped {
             what: "unified log".into(),
             reason: "skipped (--no-log)".into(),
@@ -324,38 +371,66 @@ pub fn collect_scan(
         cancelled |= log_res.cancelled;
         if log_res.timed_out {
             report.complete = false;
-            let read = match log_res.read_since {
-                Some(t) => format!(
-                    "the newest {} (from {}) was read in full; older events were read only in part",
-                    crate::util::human_duration((until - t).num_seconds().max(0) as u64),
-                    t.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")
-                ),
-                None => "even the newest slice of the window was read only in part".into(),
-            };
             report.notes.push(format!(
-                "unified-log pass hit the {}s timeout: {read} (raise --timeout or shrink --last)",
-                opts.timeout
+                "unified-log pass hit the {}s timeout: {} (raise --timeout or shrink --last)",
+                opts.timeout,
+                read_in_full(log_res.read_since)
             ));
         }
+        let win_hours = (until - log_since).num_hours();
+        log_cov = if log_res.failed {
+            (
+                CoverageStatus::NotRead,
+                format!(
+                    "failed: {}",
+                    log_res.error.as_deref().unwrap_or("log show error")
+                ),
+            )
+        } else if log_res.timed_out || log_res.cancelled {
+            (CoverageStatus::Partial, read_in_full(log_res.read_since))
+        } else if log_res.log_rules_run == 0 {
+            (CoverageStatus::NotRead, "no log rules selected".into())
+        } else if log_res.log_lines == 0 && win_hours >= 2 {
+            (
+                CoverageStatus::NotRead,
+                format!("0 lines over ~{win_hours}h"),
+            )
+        } else {
+            (
+                CoverageStatus::Read,
+                format!(
+                    "{} to {} · {} matching lines",
+                    log_since.with_timezone(&Local).format("%Y-%m-%d %H:%M"),
+                    until.with_timezone(&Local).format("%Y-%m-%d %H:%M"),
+                    log_res.log_lines
+                ),
+            )
+        };
         if log_res.failed {
             report.complete = false;
             report.notes.push(format!(
                 "unified-log pass FAILED ({}) — log findings are missing; this is NOT a clean result",
                 log_res.error.as_deref().unwrap_or("log show error")
             ));
-        } else if !log_res.timed_out && !log_res.cancelled && log_res.log_lines == 0 {
-            let win_hours = (until - log_since).num_hours();
-            if win_hours >= 2 {
-                report.complete = false;
-                report.notes.push(format!(
-                    "unified-log pass returned 0 lines over ~{win_hours}h — logd may be unavailable \
-                     or access-restricted; log-based findings may be missing"
-                ));
-            }
+        } else if !log_res.timed_out
+            && !log_res.cancelled
+            && log_res.log_lines == 0
+            && win_hours >= 2
+        {
+            report.complete = false;
+            report.notes.push(format!(
+                "unified-log pass returned 0 lines over ~{win_hours}h — logd may be unavailable \
+                 or access-restricted; log-based findings may be missing"
+            ));
         }
         log_findings = log_res.findings;
         report.log_events = log_res.events;
     }
+    report.coverage.push(Coverage {
+        source: "unified log".into(),
+        status: log_cov.0,
+        detail: log_cov.1,
+    });
 
     let mut all: Vec<Finding> = file_res.findings;
     all.extend(log_findings);
@@ -437,6 +512,23 @@ pub fn collect_scan(
                 .into(),
         );
     }
+    let ssd_skip = report
+        .skipped
+        .iter()
+        .find(|s| s.what == crate::hardware::SSD_WEAR_SOURCE);
+    let (status, detail) = match ssd_skip {
+        Some(s) => (CoverageStatus::NotRead, s.reason.clone()),
+        None if report.vitals.iter().any(|v| v.label == "Disk") => {
+            (CoverageStatus::Read, "smartctl".into())
+        }
+        None => (CoverageStatus::NotRead, "disk checks not selected".into()),
+    };
+    report.coverage.push(Coverage {
+        source: "SSD health".into(),
+        status,
+        detail,
+    });
+
     let full_recovery_coverage =
         root && opts.only.is_empty() && opts.skip.is_empty() && !opts.no_log && !cancelled;
     report.recovery = Some(recovery::assess(&report, full_recovery_coverage));
@@ -502,6 +594,7 @@ pub fn collect_snapshot(
         recovery: None,
         stats: Default::default(),
         log_events: Vec::new(),
+        coverage: Vec::new(),
     };
 
     prog.phase(0.0, 0.34, "live vitals");
@@ -565,6 +658,7 @@ pub fn collect_security(prog: &dyn Reporter) -> Report {
         recovery: None,
         stats: Default::default(),
         log_events: Vec::new(),
+        coverage: Vec::new(),
     };
     prog.phase(0.0, 0.2, "posture · launch items · kexts");
     let audit_res = audit::scan(&cats, root, Utc::now());
@@ -621,6 +715,7 @@ pub fn scan_for_watch() -> Report {
         recovery: None,
         stats: Default::default(),
         log_events: Vec::new(),
+        coverage: Vec::new(),
     };
     let file_res = files::scan(&files::report_dirs(root), since, now, &cats);
     report.stats.files_scanned = file_res.files_scanned;

@@ -250,6 +250,33 @@ pub struct Skipped {
     pub reason: String,
 }
 
+/// How much of one recovery-critical source a scan read. "Read" with no
+/// findings is good news; "not read" with no findings is no news at all.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Coverage {
+    pub source: String,
+    pub status: CoverageStatus,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CoverageStatus {
+    Read,
+    Partial,
+    NotRead,
+}
+
+impl CoverageStatus {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Partial => "partial",
+            Self::NotRead => "not read",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Stats {
     pub files_scanned: u32,
@@ -348,6 +375,10 @@ pub struct Report {
     pub vitals: Vec<Vital>,
     pub findings: Vec<Finding>,
     pub skipped: Vec<Skipped>,
+    /// Report files, panic records, unified log and SSD health, each with how
+    /// much was read. Full scans only; recovery blocks an erase on any gap.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub coverage: Vec<Coverage>,
     pub notes: Vec<String>,
     /// Present on full scans. Snapshot/watch reports omit it because they do not
     /// collect enough historical evidence for a recovery decision.

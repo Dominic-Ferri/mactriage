@@ -136,6 +136,8 @@ A scan with zero findings is good news only if mactriage read every source. mact
 
 An incomplete scan shows a note in the terminal and HTML reports. In JSON, it sets `"complete": false`. Its condition is UNKNOWN, never HEALTHY.
 
+A full scan also lists four recovery-critical sources under Coverage: report files, panic records, the unified log, and SSD health. Each one is `read`, `partial`, or `not read`, with the reason. This tells "read, nothing found" apart from "never read". In JSON, the list is `coverage`. When any of the four is not read in full, the recovery assessment adds a blocker that names it.
+
 ## More detail
 
 <details>

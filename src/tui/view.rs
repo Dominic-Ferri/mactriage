@@ -583,6 +583,21 @@ fn render_coverage(frame: &mut Frame, area: Rect, report: &Report, scroll: u16) 
             lines.push(Line::from(format!("  • {note}")));
         }
     }
+    if !report.coverage.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Recovery-critical sources",
+            Style::default().add_modifier(Modifier::BOLD),
+        )));
+        for c in &report.coverage {
+            lines.push(Line::from(format!(
+                "  • {}: {} — {}",
+                c.source,
+                c.status.label(),
+                c.detail
+            )));
+        }
+    }
     if !report.skipped.is_empty() {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
@@ -775,6 +790,7 @@ mod tests {
             recovery: None,
             stats: Stats::default(),
             log_events: vec![],
+            coverage: Vec::new(),
         });
         app.screen = Screen::Results;
 
