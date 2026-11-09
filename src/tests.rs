@@ -55,8 +55,10 @@ fn overall_condition_reports_how_serious_the_findings_are() {
     };
 
     assert_eq!(report.overall_condition(), OverallCondition::Healthy);
+    assert_eq!(report.exit_code(), 0);
     report.complete = false;
     assert_eq!(report.overall_condition(), OverallCondition::Unknown);
+    assert_eq!(report.exit_code(), crate::report::EXIT_UNKNOWN);
     let terminal = crate::render::render(&report, &crate::render::Style::new(true), 0, false);
     assert!(terminal.contains("Overall condition  UNKNOWN"));
     let html = crate::html::render(&report);
@@ -69,6 +71,11 @@ fn overall_condition_reports_how_serious_the_findings_are() {
         .findings
         .push(Finding::new("medium", Severity::Medium, "test", "medium"));
     assert_eq!(report.overall_condition(), OverallCondition::Degraded);
+    assert_eq!(
+        report.exit_code(),
+        20,
+        "an incomplete scan still reports its worst finding"
+    );
     report
         .findings
         .push(Finding::new("high", Severity::High, "test", "high"));

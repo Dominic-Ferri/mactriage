@@ -124,7 +124,7 @@ The report also gives the whole Mac one overall condition:
 | HEALTHY | A complete scan with no findings above Info |
 | UNKNOWN | An incomplete scan with no findings above Info |
 
-The exit code follows the worst finding: `0` healthy, `10` low, `20` medium, `30` high, `40` fatal. Code `2` is a usage error, and code `70` is an internal error. Scripts can use the exit code without parsing the output.
+The exit code follows the worst finding: `0` healthy, `10` low, `20` medium, `30` high, `40` fatal. An UNKNOWN scan exits `50`, so a script never reads an incomplete scan as healthy. Code `2` is a usage error, and code `70` is an internal error. Scripts can use the exit code without parsing the output.
 
 ### When a scan is incomplete
 
