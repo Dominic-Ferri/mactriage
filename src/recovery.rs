@@ -126,7 +126,11 @@ fn assess_findings(
     let os_wide_failure = findings.iter().any(|f| {
         matches!(
             f.rule_id.as_str(),
-            "log.watchdog" | "log.gpu_reset" | "boot.slow_boot" | "log.io_errors"
+            "log.watchdog"
+                | "log.gpu_reset"
+                | "boot.slow_boot"
+                | "log.io_errors"
+                | "posture.ssv_disabled"
         ) && f.severity >= Severity::High
     });
 
@@ -264,7 +268,7 @@ fn assess_findings(
         }
         if os_wide_failure {
             reasons.push(
-                "The scan found an OS-wide watchdog, GPU, boot, or storage failure without a proven third-party cause."
+                "The scan found an OS-wide watchdog, GPU, boot, or storage failure, or a signed system volume that is not intact, without a proven third-party cause."
                     .into(),
             );
         }
@@ -671,6 +675,25 @@ mod tests {
             assessment.recommendation,
             RecoveryRecommendation::FirmwareOrHardwareFirst
         );
+    }
+
+    #[test]
+    fn broken_system_volume_seal_means_reinstall_in_place() {
+        let seal = Finding::new(
+            "posture.ssv_disabled",
+            Severity::High,
+            "posture",
+            "The signed system volume is not intact",
+        );
+        let assessment = assess_findings(&[seal], true, true, "Apple M4", false);
+        assert_eq!(
+            assessment.recommendation,
+            RecoveryRecommendation::ReinstallMacosInPlace
+        );
+        assert!(assessment
+            .reasons
+            .iter()
+            .any(|r| r.contains("signed system volume")));
     }
 
     #[test]

@@ -369,6 +369,29 @@ fn kexts(r: &mut AuditResult) {
     }
 }
 
+/// The `Sealed` value ("Yes", "No", "Broken") from `diskutil info -plist /`.
+pub fn sealed_value(plist_xml: &str) -> Option<String> {
+    plist::Value::from_reader_xml(plist_xml.as_bytes())
+        .ok()?
+        .as_dictionary()?
+        .get("Sealed")?
+        .as_string()
+        .map(String::from)
+}
+
+/// What is wrong with the signed system volume, given the lowercased output
+/// of `csrutil authenticated-root status` and the seal value. None when the
+/// readable parts are fine.
+pub fn ssv_problem(authroot: &str, sealed: Option<&str>) -> Option<String> {
+    if authroot.contains("disabled") {
+        return Some("authenticated root is disabled".into());
+    }
+    match sealed {
+        Some("Yes") | None => None,
+        Some(s) => Some(format!("the system volume reports Sealed: {s}")),
+    }
+}
+
 /// A posture check whose tool gave no recognizable answer: say so instead of
 /// reporting a clean result.
 fn not_verified(r: &mut AuditResult, what: &str) {
@@ -399,6 +422,40 @@ fn posture(r: &mut AuditResult, root: bool) {
             .into();
         f.next_step = Some(
             "Re-enable from Recovery: `csrutil enable`, unless there's a documented reason.".into(),
+        );
+        r.findings.push(f);
+    }
+    // Signed System Volume
+    let authroot = run("/usr/bin/csrutil", &["authenticated-root", "status"])
+        .unwrap_or_default()
+        .to_lowercase();
+    if !authroot.contains("enabled") && !authroot.contains("disabled") {
+        not_verified(
+            r,
+            "authenticated root status (csrutil authenticated-root status)",
+        );
+    }
+    let sealed = run("/usr/sbin/diskutil", &["info", "-plist", "/"]).and_then(|o| sealed_value(&o));
+    if sealed.is_none() {
+        not_verified(r, "system volume seal (diskutil info /)");
+    }
+    if let Some(why) = ssv_problem(&authroot, sealed.as_deref()) {
+        let mut f = Finding::new(
+            "posture.ssv_disabled",
+            Severity::High,
+            "posture",
+            &format!("The signed system volume is not intact: {why}"),
+        );
+        f.detail = "macOS normally starts from a cryptographically sealed snapshot of the system \
+                    volume, so system files cannot change without breaking the seal. With the \
+                    seal off or broken, system files may have been modified, and Software Update \
+                    can fail."
+            .into();
+        f.next_step = Some(
+            "If nobody turned it off on purpose, reinstall macOS from Recovery without erasing; \
+             that restores the sealed system volume. If it was turned off on purpose, turn it \
+             back on from Recovery with `csrutil authenticated-root enable`."
+                .into(),
         );
         r.findings.push(f);
     }

@@ -646,6 +646,34 @@ fn log_events_serialize_only_when_present() {
 }
 
 #[test]
+fn signed_system_volume_seal() {
+    use crate::audit::{sealed_value, ssv_problem};
+    let plist = |sealed: &str| {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>APFSSnapshot</key><true/><key>Sealed</key><string>{sealed}</string></dict></plist>"#
+        )
+    };
+    assert_eq!(sealed_value(&plist("Yes")).as_deref(), Some("Yes"));
+    assert_eq!(sealed_value("not a plist"), None);
+    let enabled = "authenticated root status: enabled";
+    assert_eq!(ssv_problem(enabled, Some("Yes")), None);
+    assert_eq!(
+        ssv_problem(enabled, None),
+        None,
+        "an unread seal is not a finding"
+    );
+    assert!(ssv_problem(enabled, Some("Broken"))
+        .unwrap()
+        .contains("Sealed: Broken"));
+    assert!(ssv_problem(enabled, sealed_value(&plist("No")).as_deref()).is_some());
+    assert!(
+        ssv_problem("authenticated root status: disabled", Some("Yes"))
+            .unwrap()
+            .contains("authenticated root is disabled")
+    );
+}
+
+#[test]
 fn erase_readiness_inputs_parse() {
     let hw = |status: &str| serde_json::json!({"SPHardwareDataType": [{"activation_lock_status": status}]});
     let lock = crate::host::parse_activation_lock;
