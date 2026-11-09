@@ -92,7 +92,7 @@ pub fn install(interval: &str, min_severity: Severity) -> Result<String, String>
     std::fs::write(&path, plist).map_err(|e| e.to_string())?;
     let uid = unsafe { geteuid_shim() };
     run(
-        "launchctl",
+        "/bin/launchctl",
         &[
             "bootout",
             &format!("gui/{uid}"),
@@ -100,7 +100,7 @@ pub fn install(interval: &str, min_severity: Severity) -> Result<String, String>
         ],
     );
     run(
-        "launchctl",
+        "/bin/launchctl",
         &[
             "bootstrap",
             &format!("gui/{uid}"),
@@ -121,7 +121,7 @@ pub fn uninstall() -> Result<String, String> {
     }
     let uid = unsafe { geteuid_shim() };
     run(
-        "launchctl",
+        "/bin/launchctl",
         &[
             "bootout",
             &format!("gui/{uid}"),
@@ -145,7 +145,7 @@ pub fn status() -> String {
     if !path.exists() {
         return "watch: not installed".into();
     }
-    let loaded = run("launchctl", &["list"])
+    let loaded = run("/bin/launchctl", &["list"])
         .map(|o| o.contains(AGENT_LABEL))
         .unwrap_or(false);
     let state = std::fs::read_to_string(state_path()).ok();
@@ -202,7 +202,7 @@ pub fn run_once(min_severity: Severity) -> i32 {
             .collect::<Vec<_>>()
             .join(" · ");
         run(
-            "osascript",
+            "/usr/bin/osascript",
             &[
                 "-e",
                 &format!(

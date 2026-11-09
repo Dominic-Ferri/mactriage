@@ -5,6 +5,11 @@
 - An UNKNOWN scan now exits with code 50. Before, an incomplete scan with
   nothing above Info exited 0, the same code as a healthy scan, so a script
   could read a scan that missed sources as a clean result.
+- Every system tool now runs by absolute path. The 0.12.0 notes said this was
+  already true, but 39 calls in the host, power, storage, network, baseline,
+  boot, hardware and watch checks still used a bare name, so they ran the
+  first match on PATH. Under `sudo`, that could be a user-writable copy.
+  Debug and test builds now stop on any bare name.
 
 ## Documentation (2026-10-27)
 

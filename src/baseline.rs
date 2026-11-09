@@ -42,14 +42,14 @@ pub fn baseline_path() -> PathBuf {
 pub fn capture(root: bool) -> Baseline {
     let all: HashSet<Category> = Category::ALL.iter().copied().collect();
     let audit = crate::audit::scan(&all, root, Utc::now() - chrono::Duration::days(36500));
-    let df = run("df", &["-k", "/"]).unwrap_or_default();
+    let df = run("/bin/df", &["-k", "/"]).unwrap_or_default();
     let disk_pct_full = df
         .lines()
         .nth(1)
         .and_then(|l| l.split_whitespace().nth(4))
         .and_then(|p| p.trim_end_matches('%').parse().ok())
         .unwrap_or(0);
-    let snapshot_count = run("tmutil", &["listlocalsnapshots", "/"])
+    let snapshot_count = run("/usr/bin/tmutil", &["listlocalsnapshots", "/"])
         .map(|o| {
             o.lines()
                 .filter(|l| l.contains("com.apple.TimeMachine."))
@@ -58,7 +58,7 @@ pub fn capture(root: bool) -> Baseline {
         .unwrap_or(0);
     Baseline {
         captured_at: Utc::now(),
-        macos_build: run("sw_vers", &["-buildVersion"])
+        macos_build: run("/usr/bin/sw_vers", &["-buildVersion"])
             .unwrap_or_default()
             .trim()
             .into(),
@@ -69,15 +69,15 @@ pub fn capture(root: bool) -> Baseline {
         last_install: audit.installs.last().cloned(),
         disk_pct_full,
         snapshot_count,
-        sip_enabled: !run("csrutil", &["status"])
+        sip_enabled: !run("/usr/bin/csrutil", &["status"])
             .unwrap_or_default()
             .to_lowercase()
             .contains("disabled"),
-        gatekeeper_enabled: !run("spctl", &["--status"])
+        gatekeeper_enabled: !run("/usr/sbin/spctl", &["--status"])
             .unwrap_or_default()
             .to_lowercase()
             .contains("disabled"),
-        filevault_on: run("fdesetup", &["status"])
+        filevault_on: run("/usr/bin/fdesetup", &["status"])
             .unwrap_or_default()
             .contains("FileVault is On"),
         ssd_percent_used: crate::hardware::ssd_check(&crate::host::boot_physical_disk())

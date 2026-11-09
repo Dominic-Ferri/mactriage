@@ -88,7 +88,10 @@ pub fn parse_smart_battery(xml: &str) -> Option<BatteryIoreg> {
 }
 
 pub fn read_battery_ioreg() -> Option<BatteryIoreg> {
-    parse_smart_battery(&run("ioreg", &["-r", "-c", "AppleSmartBattery", "-a"])?)
+    parse_smart_battery(&run(
+        "/usr/sbin/ioreg",
+        &["-r", "-c", "AppleSmartBattery", "-a"],
+    )?)
 }
 
 /// Apple's battery figures from `system_profiler SPPowerDataType -json`:
@@ -119,7 +122,10 @@ pub fn parse_profiler_battery(json: &str) -> Option<(String, i64, i64)> {
 }
 
 pub fn read_profiler_battery() -> Option<(String, i64, i64)> {
-    parse_profiler_battery(&run("system_profiler", &["SPPowerDataType", "-json"])?)
+    parse_profiler_battery(&run(
+        "/usr/sbin/system_profiler",
+        &["SPPowerDataType", "-json"],
+    )?)
 }
 
 fn battery_health(r: &mut PowerResult, ioreg: Option<&BatteryIoreg>) {
@@ -305,7 +311,7 @@ fn in_range(max_cap: i64) -> bool {
 }
 
 fn assertions(r: &mut PowerResult) {
-    let out = run("pmset", &["-g", "assertions"]).unwrap_or_default();
+    let out = run("/usr/bin/pmset", &["-g", "assertions"]).unwrap_or_default();
     // Aggregate section: "   PreventUserIdleSystemSleep     1"
     let active = |name: &str| -> bool {
         out.lines().any(|l| {
@@ -408,7 +414,7 @@ pub fn assertion_holder(line: &str) -> Option<String> {
 
 fn dark_wake_storm(r: &mut PowerResult) {
     // pmset -g log is large; give it a bounded read and parse only DarkWake lines.
-    let (out, _) = run_with_timeout("pmset", &["-g", "log"], Duration::from_secs(20));
+    let (out, _) = run_with_timeout("/usr/bin/pmset", &["-g", "log"], Duration::from_secs(20));
     if out.is_empty() {
         return;
     }

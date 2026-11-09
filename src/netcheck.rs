@@ -20,7 +20,7 @@ pub fn scan(categories: &HashSet<Category>, root: bool) -> NetResult {
     if !categories.contains(&Category::Network) {
         return r;
     }
-    let route = run("route", &["-n", "get", "default"]).unwrap_or_default();
+    let route = run("/sbin/route", &["-n", "get", "default"]).unwrap_or_default();
     let gateway = route
         .lines()
         .find(|l| l.trim_start().starts_with("gateway:"))
@@ -52,13 +52,16 @@ pub fn scan(categories: &HashSet<Category>, root: bool) -> NetResult {
     };
 
     // Gateway reachability: 1 ping, 2s ceiling.
-    let (ping_out, _) =
-        run_with_timeout("ping", &["-c", "1", "-t", "2", &gw], Duration::from_secs(4));
+    let (ping_out, _) = run_with_timeout(
+        "/sbin/ping",
+        &["-c", "1", "-t", "2", &gw],
+        Duration::from_secs(4),
+    );
     let gw_ok = ping_out.contains("1 packets received") || ping_out.contains("1 received");
 
     // DNS through the system resolver path.
     let (dns_out, _) = run_with_timeout(
-        "dscacheutil",
+        "/usr/bin/dscacheutil",
         &["-q", "host", "-a", "name", "apple.com"],
         Duration::from_secs(5),
     );
@@ -124,7 +127,7 @@ pub fn scan(categories: &HashSet<Category>, root: bool) -> NetResult {
         // wdutil info works without sudo on modern macOS (some fields redacted);
         // sudo gets the full picture. Try either way — only report a skip when
         // we couldn't parse signal numbers at all.
-        let (wd, _) = run_with_timeout("wdutil", &["info"], Duration::from_secs(10));
+        let (wd, _) = run_with_timeout("/usr/bin/wdutil", &["info"], Duration::from_secs(10));
         let grab = |key: &str| -> Option<i64> {
             wd.lines()
                 .find(|l| l.trim_start().starts_with(key))
@@ -173,7 +176,7 @@ pub fn scan(categories: &HashSet<Category>, root: bool) -> NetResult {
 /// The BSD device name of the Wi-Fi hardware port (e.g. "en0"), or None if this
 /// Mac has no Wi-Fi. Used to tell Wi-Fi apart from wired Ethernet (both en*).
 fn wifi_device() -> Option<String> {
-    let out = run("networksetup", &["-listallhardwareports"]).unwrap_or_default();
+    let out = run("/usr/sbin/networksetup", &["-listallhardwareports"]).unwrap_or_default();
     let mut lines = out.lines();
     while let Some(l) = lines.next() {
         if l.trim_start().starts_with("Hardware Port:") && l.to_lowercase().contains("wi-fi") {
