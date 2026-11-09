@@ -15,6 +15,11 @@
   only when the file and every folder above it are root-owned and not writable
   by other users. The copy inside MacTriage.app is still used. Otherwise the
   SSD wear check is Skipped and names the folder that failed the check.
+- Kernel panics that the panic classifier blames on software (a third-party
+  kernel extension or a userspace watchdog timeout) no longer count toward the
+  "two or more panics: firmware or hardware first" tier. They lead to
+  "repair software first", with the classifier's reason. Before, two userspace
+  watchdog panics sent the technician to Apple Diagnostics and DFU steps.
 
 ## Documentation (2026-10-27)
 
