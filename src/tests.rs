@@ -772,7 +772,7 @@ fn unread_recovery_sources_block_an_erase() {
     assert!(
         a.blockers
             .iter()
-            .any(|b| b.starts_with("SSD health was not read (smartctl not bundled")),
+            .any(|b| b.starts_with("SSD health was not read: smartctl not bundled")),
         "{:?}",
         a.blockers
     );
