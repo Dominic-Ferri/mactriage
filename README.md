@@ -160,7 +160,9 @@ Some reports are not failures. An `ExcUserFault_*.ips` file is a fault snapshot 
 
 #### 2. The unified log
 
-This is the slow stage. mactriage runs `/usr/bin/log show` one time, with one combined predicate for every log rule. It streams the output as JSON lines. One pass is about ten times faster than one query per rule. On a busy Mac, a 6-hour window takes 2 to 5 minutes.
+This is the slow stage. mactriage runs `/usr/bin/log show` with one combined predicate for every log rule. It streams the output as JSON lines. One combined predicate is about ten times faster than one query per rule. On a busy Mac, a 6-hour window takes 2 to 5 minutes.
+
+mactriage reads the window in time slices, newest first. A 6-hour window is six one-hour slices, and a longer window uses at most twelve. All slices share the `--timeout` budget. If the budget runs out, the oldest slices are the ones that are lost, and the report says how much of the window was read in full.
 
 A classifier in Rust reads each matching line. The classifier removes known noise first. Examples are thermal messages that report the all-clear, and Spotlight errors for files deleted during the read. Time Machine "backup delayed" messages are noise too, and so are the lines that `log show` itself creates.
 

@@ -372,11 +372,40 @@ pub struct LogScanResult {
     pub failed: bool,
     /// Short reason (stderr tail) when `failed`, for the report note.
     pub error: Option<String>,
+    /// Start of the oldest slice read in full. The window from here to its end
+    /// was read completely; None when not even the newest slice finished.
+    pub read_since: Option<DateTime<Utc>>,
+}
+
+/// The log window cut into slices, newest first, on whole-second boundaries
+/// (`log show --start/--end` take seconds). Each slice is at least an hour and
+/// there are at most 12, so a timeout loses the oldest events instead of the
+/// newest ones, which are usually the ones the user is calling about.
+pub fn log_slices(
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+) -> Vec<(DateTime<Utc>, DateTime<Utc>)> {
+    const MAX_SLICES: i64 = 12;
+    let (start_s, end_s) = (
+        since.timestamp(),
+        until.timestamp().max(since.timestamp() + 1),
+    );
+    let n = ((end_s - start_s) / 3600).clamp(1, MAX_SLICES);
+    let len = (end_s - start_s + n - 1) / n;
+    let at = |s: i64| DateTime::<Utc>::from_timestamp(s, 0).unwrap_or(since);
+    let mut slices = Vec::new();
+    let mut end = end_s;
+    while end > start_s {
+        let start = (end - len).max(start_s);
+        slices.push((at(start), at(end)));
+        end = start;
+    }
+    slices
 }
 
 pub fn scan(
     since: DateTime<Utc>,
-    until: Option<DateTime<Utc>>,
+    until: DateTime<Utc>,
     categories: &HashSet<Category>,
     timeout: Duration,
     verbose: u8,
@@ -397,6 +426,7 @@ pub fn scan(
             cancelled: false,
             failed: false,
             error: None,
+            read_since: None,
         };
     }
     let predicate = rules
@@ -405,123 +435,162 @@ pub fn scan(
         .collect::<Vec<_>>()
         .join(" OR ");
 
-    let start = since
-        .with_timezone(&chrono::Local)
-        .format("%Y-%m-%d %H:%M:%S")
-        .to_string();
-    let mut args: Vec<String> = vec![
-        "show".into(),
-        "--style".into(),
-        "ndjson".into(),
-        "--start".into(),
-        start,
-        "--predicate".into(),
-        predicate,
-    ];
-    if let Some(u) = until {
-        args.push("--end".into());
-        args.push(
-            u.with_timezone(&chrono::Local)
-                .format("%Y-%m-%d %H:%M:%S")
-                .to_string(),
-        );
-    }
-    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    if verbose >= 2 {
-        eprintln!("[debug] log {}", args.join(" "));
-    }
-
-    let window_end = until.unwrap_or_else(Utc::now);
-    let window_total = (window_end - since).num_seconds().max(1) as f64;
+    let local = |t: DateTime<Utc>| {
+        t.with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string()
+    };
+    let slices = log_slices(since, until);
+    let window_total = (until - since).num_seconds().max(1) as f64;
     let mut per_rule: Vec<Vec<Hit>> = rules.iter().map(|_| Vec::new()).collect();
     let mut log_lines = 0u64;
 
     // Progress is driven two ways and the bar takes the max:
-    //  - real position: matching lines arrive in chronological order, so each
-    //    line's timestamp says how far into the window we are;
+    //  - real position: slices finished so far, plus how far into the current
+    //    slice the newest line's timestamp is (each slice reads oldest-first);
     //  - wall-clock estimate (~25s per hour of window) so the bar still moves
     //    on quiet systems where matches are sparse.
-    let ts_frac = std::cell::Cell::new(0.0f64);
     let shown_frac = std::cell::Cell::new(0.0f64);
     let pass_start = std::time::Instant::now();
     let est_total_secs = (window_total / 3600.0 * 25.0).max(10.0);
 
-    // Absolute path: bare `log` can be shadowed by shell aliases on some setups.
-    let outcome = crate::util::stream_lines(
-        "/usr/bin/log",
-        &arg_refs,
-        timeout,
-        cancel,
-        |line| {
-            let v: serde_json::Value = match serde_json::from_str(line) {
-                Ok(v) => v,
-                Err(_) => return,
-            };
-            // ndjson output ends with a {"finished": N} sentinel record (documented
-            // in log(1)) — not a log event, don't count it.
-            if v.get("finished").is_some() {
-                return;
-            }
-            log_lines += 1;
-            let ts = v
-                .get("timestamp")
-                .and_then(|t| t.as_str())
-                .and_then(crate::files::parse_report_time);
-            if let Some(t) = ts {
-                let scanned = (t - since).num_seconds().max(0) as f64;
-                ts_frac.set((scanned / window_total).clamp(0.0, 1.0));
-                let frac = ts_frac.get().max(shown_frac.get());
-                shown_frac.set(frac);
-                progress.update(
-                    frac,
-                    Some(&format!(
-                        "unified log · {} of {} scanned",
-                        crate::util::human_duration(scanned as u64),
-                        crate::util::human_duration(window_total as u64)
-                    )),
-                );
-            }
-            let process = v
-                .get("processImagePath")
-                .and_then(|p| p.as_str())
-                .map(|p| p.rsplit('/').next().unwrap_or(p).to_string())
-                .or_else(|| v.get("process").and_then(|p| p.as_str()).map(String::from))
-                .unwrap_or_default();
-            let message = v.get("eventMessage").and_then(|m| m.as_str()).unwrap_or("");
-            // logd records every `log show` invocation INCLUDING the predicate text,
-            // which contains all our match keywords — skip those self-referential
-            // lines or this scanner reports its own previous runs as findings.
-            if message.contains("--predicate") || message.contains("run noninteractively") {
-                return;
-            }
-            // Known-nominal noise that keyword matchers would misread.
-            if message.contains("thermal pressure level=0")
-                || message.contains("Thermal pressure state: 0")
-                || message.contains("approval entry")
-            {
-                return;
-            }
-            for (i, rule) in rules.iter().enumerate() {
-                if (rule.matches)(&process, message) {
-                    per_rule[i].push(Hit {
-                        ts,
-                        process: process.clone(),
-                        message: message.chars().take(500).collect(),
-                    });
-                    break;
+    // One deadline for the whole pass: each slice gets whatever time is left.
+    let deadline = std::time::Instant::now() + timeout;
+    let mut timed_out = false;
+    let mut cancelled = false;
+    let mut spawn_failed = false;
+    let mut exit_error: Option<String> = None;
+    let mut read_since = None;
+    for (k, &(slice_start, slice_end)) in slices.iter().enumerate() {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            timed_out = true;
+            break;
+        }
+        let args = [
+            "show",
+            "--style",
+            "ndjson",
+            "--start",
+            &local(slice_start),
+            "--end",
+            &local(slice_end),
+            "--predicate",
+            &predicate,
+        ]
+        .map(String::from);
+        if verbose >= 2 {
+            eprintln!("[debug] log {}", args.join(" "));
+        }
+        let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        let slice_secs = (slice_end - slice_start).num_seconds().max(1) as f64;
+        let read_before = (until - slice_end).num_seconds().max(0) as f64;
+        // Absolute path: bare `log` can be shadowed by shell aliases on some setups.
+        let outcome = crate::util::stream_lines(
+            "/usr/bin/log",
+            &arg_refs,
+            remaining,
+            cancel,
+            |line| {
+                let v: serde_json::Value = match serde_json::from_str(line) {
+                    Ok(v) => v,
+                    Err(_) => return,
+                };
+                // ndjson output ends with a {"finished": N} sentinel record (documented
+                // in log(1)) — not a log event, don't count it.
+                if v.get("finished").is_some() {
+                    return;
                 }
-            }
-        },
-        || {
-            // Idle tick: advance by wall-clock estimate, capped so the bar never
-            // claims completion before the pass actually ends.
-            let est = (pass_start.elapsed().as_secs_f64() / est_total_secs).min(0.97);
-            if est > shown_frac.get() {
-                shown_frac.set(est);
-                progress.update(est, None);
-            }
-        },
-    );
+                let ts = v
+                    .get("timestamp")
+                    .and_then(|t| t.as_str())
+                    .and_then(crate::files::parse_report_time);
+                // `--end` includes its whole last second, which the next newer
+                // slice starts with; leave those events to that slice.
+                if k > 0 && ts.is_some_and(|t| t >= slice_end) {
+                    return;
+                }
+                log_lines += 1;
+                if let Some(t) = ts {
+                    let into = (t - slice_start).num_seconds().max(0) as f64;
+                    let read = read_before + into.min(slice_secs);
+                    let frac = ((k as f64 + (into / slice_secs).min(1.0)) / slices.len() as f64)
+                        .max(shown_frac.get());
+                    shown_frac.set(frac);
+                    progress.update(
+                        frac,
+                        Some(&format!(
+                            "unified log · newest {} of {} read",
+                            crate::util::human_duration(read as u64),
+                            crate::util::human_duration(window_total as u64)
+                        )),
+                    );
+                }
+                let process = v
+                    .get("processImagePath")
+                    .and_then(|p| p.as_str())
+                    .map(|p| p.rsplit('/').next().unwrap_or(p).to_string())
+                    .or_else(|| v.get("process").and_then(|p| p.as_str()).map(String::from))
+                    .unwrap_or_default();
+                let message = v.get("eventMessage").and_then(|m| m.as_str()).unwrap_or("");
+                // logd records every `log show` invocation INCLUDING the predicate text,
+                // which contains all our match keywords — skip those self-referential
+                // lines or this scanner reports its own previous runs as findings.
+                if message.contains("--predicate") || message.contains("run noninteractively") {
+                    return;
+                }
+                // Known-nominal noise that keyword matchers would misread.
+                if message.contains("thermal pressure level=0")
+                    || message.contains("Thermal pressure state: 0")
+                    || message.contains("approval entry")
+                {
+                    return;
+                }
+                for (i, rule) in rules.iter().enumerate() {
+                    if (rule.matches)(&process, message) {
+                        per_rule[i].push(Hit {
+                            ts,
+                            process: process.clone(),
+                            message: message.chars().take(500).collect(),
+                        });
+                        break;
+                    }
+                }
+            },
+            || {
+                // Idle tick: advance by wall-clock estimate, capped so the bar never
+                // claims completion before the pass actually ends.
+                let est = (pass_start.elapsed().as_secs_f64() / est_total_secs).min(0.97);
+                if est > shown_frac.get() {
+                    shown_frac.set(est);
+                    progress.update(est, None);
+                }
+            },
+        );
+        if outcome.spawn_failed {
+            spawn_failed = true;
+            break;
+        }
+        if !outcome.exit_ok {
+            exit_error = Some(if outcome.stderr_tail.is_empty() {
+                "log show exited non-zero".to_string()
+            } else {
+                outcome.stderr_tail
+            });
+            break;
+        }
+        if outcome.timed_out || outcome.cancelled {
+            timed_out = outcome.timed_out;
+            cancelled = outcome.cancelled;
+            break;
+        }
+        read_since = Some(slice_start);
+    }
+    // Slices arrive newest-first; restore time order so `summarize` sees the
+    // newest hit last (shutdown cause, evidence excerpts) as before.
+    for hits in &mut per_rule {
+        hits.sort_by_key(|h| h.ts);
+    }
 
     let mut findings = Vec::new();
     for (i, rule) in rules.iter().enumerate() {
@@ -543,27 +612,22 @@ pub fn scan(
     events.sort_by_key(|e| e.timestamp);
     // A spawn failure or a non-zero `log show` exit (bad predicate, corrupted
     // logd store, TCC denial) must be reported, not silently read as "clean".
-    let failed = outcome.spawn_failed || !outcome.exit_ok;
-    let error = if outcome.spawn_failed {
+    let failed = spawn_failed || exit_error.is_some();
+    let error = if spawn_failed {
         Some("could not launch /usr/bin/log".to_string())
-    } else if !outcome.exit_ok {
-        Some(if outcome.stderr_tail.is_empty() {
-            "log show exited non-zero".to_string()
-        } else {
-            outcome.stderr_tail.clone()
-        })
     } else {
-        None
+        exit_error
     };
     LogScanResult {
         findings,
         events,
         log_lines,
         log_rules_run: rules.len() as u32,
-        timed_out: outcome.timed_out,
-        cancelled: outcome.cancelled,
+        timed_out,
+        cancelled,
         failed,
         error,
+        read_since,
     }
 }
 

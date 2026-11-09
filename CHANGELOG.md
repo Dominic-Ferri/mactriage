@@ -20,6 +20,12 @@
   "two or more panics: firmware or hardware first" tier. They lead to
   "repair software first", with the classifier's reason. Before, two userspace
   watchdog panics sent the technician to Apple Diagnostics and DFU steps.
+- The unified-log pass now reads its window in time slices, newest first. A
+  6-hour window is 6 one-hour slices; longer windows use at most 12 slices.
+  All slices share the `--timeout` budget. Before, one `log show` read the
+  whole window oldest-first, so a timeout dropped the newest events, which are
+  usually the ones the user is calling about. Now a timeout drops the oldest
+  slices, and the report note says how much of the window was read in full.
 
 ## Documentation (2026-10-27)
 
