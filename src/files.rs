@@ -17,9 +17,12 @@ pub struct FileScanResult {
 }
 
 pub fn report_dirs(root: bool) -> Vec<PathBuf> {
-    // Test fixture override: point the scanner at a directory of sample reports.
-    if let Some(fixture) = std::env::var_os("MACTRIAGE_REPORTS_DIR") {
-        return vec![PathBuf::from(fixture)];
+    // Fixture override for unprivileged test runs. Ignored as root, where the
+    // caller's environment must not choose what a privileged scan reads.
+    if !root {
+        if let Some(fixture) = std::env::var_os("MACTRIAGE_REPORTS_DIR") {
+            return vec![PathBuf::from(fixture)];
+        }
     }
     let mut dirs = vec![PathBuf::from("/Library/Logs/DiagnosticReports")];
     if root {

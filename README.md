@@ -336,15 +336,15 @@ The build signs the app ad hoc. For a signature that stays the same between buil
 
 The SSD wear check needs `smartctl` from smartmontools. `MacTriage.app` includes a universal copy for macOS 12 and later. `dist/build-smartctl.sh` builds that copy from smartmontools 7.5 source with a pinned SHA-256 (GPL-2.0). The command-line tool searches for `smartctl` in these places, in this order, and never searches `PATH`:
 
-1. `MACTRIAGE_SMARTCTL=/path/to/smartctl`
+1. `MACTRIAGE_SMARTCTL=/path/to/smartctl` (ignored under `sudo`)
 2. next to the mactriage binary
 3. `/opt/homebrew/bin`, then `/usr/local/bin`
 
-If mactriage finds no copy, the check shows as Skipped.
+If mactriage finds no copy, the check shows as Skipped. Under `sudo`, mactriage runs a copy from step 3 only when the file and every folder above it are owned by root and not writable by other users. Homebrew's copy fails this check, because the user who installed Homebrew owns its folders. The check then shows as Skipped with the reason.
 
 #### Testing against saved reports
 
-Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads that folder instead of the system folders. The test suite uses this variable for its fixtures.
+Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads that folder instead of the system folders. The variable is ignored under `sudo`.
 
 </details>
 
