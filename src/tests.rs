@@ -1507,6 +1507,24 @@ fn privileged_path_modes() {
 }
 
 #[test]
+fn root_runs_only_root_owned_tools() {
+    use crate::hardware::root_may_run;
+    assert_eq!(root_may_run(std::path::Path::new("/usr/bin/true")), Ok(()));
+    let dir = std::env::temp_dir().join("mactriage-test-root-may-run");
+    std::fs::create_dir_all(&dir).unwrap();
+    let tool = dir.join("smartctl");
+    std::fs::write(&tool, "#!/bin/sh\n").unwrap();
+    let why = root_may_run(&tool).unwrap_err();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        why.contains("owned by uid") || why.contains("writable"),
+        "{why}"
+    );
+    // A path that does not resolve is refused, never assumed safe.
+    assert!(root_may_run(std::path::Path::new("/nonexistent/smartctl")).is_err());
+}
+
+#[test]
 fn firewall_app_list() {
     let out = "Total number of apps = 3 \n1 : /Applications/A.app \n             (Allow incoming connections)\n2 : /Users/me/Downloads/b \n             (Block incoming connections)\n3 : /Users/me/tool \n             (Allow incoming connections)\n";
     assert_eq!(

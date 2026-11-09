@@ -10,6 +10,11 @@
   boot, hardware and watch checks still used a bare name, so they ran the
   first match on PATH. Under `sudo`, that could be a user-writable copy.
   Debug and test builds now stop on any bare name.
+- Under `sudo`, mactriage ignores `MACTRIAGE_SMARTCTL` and
+  `MACTRIAGE_REPORTS_DIR`. It runs a Homebrew or `/usr/local` smartctl as root
+  only when the file and every folder above it are root-owned and not writable
+  by other users. The copy inside MacTriage.app is still used. Otherwise the
+  SSD wear check is Skipped and names the folder that failed the check.
 
 ## Documentation (2026-10-27)
 

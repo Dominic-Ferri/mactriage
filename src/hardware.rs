@@ -45,24 +45,48 @@ pub struct SsdOutcome {
 }
 
 /// Where to find smartctl. Never searches PATH: an env override (for tests and
-/// known-failure controls), then the copy bundled next to this binary inside
-/// MacTriage.app, then Homebrew's two prefixes.
+/// known-failure controls, ignored as root), then the copy bundled next to this
+/// binary inside MacTriage.app, then Homebrew's two prefixes.
 pub fn smartctl_path() -> Option<PathBuf> {
-    if let Some(p) = std::env::var_os("MACTRIAGE_SMARTCTL") {
-        // Returned even when missing, so a control run can prove the Skipped path.
-        return Some(PathBuf::from(p));
+    if !crate::util::is_root() {
+        if let Some(p) = std::env::var_os("MACTRIAGE_SMARTCTL") {
+            // Returned even when missing, so a control run can prove the Skipped path.
+            return Some(PathBuf::from(p));
+        }
     }
-    let bundled = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("smartctl")));
     [
-        bundled,
+        bundled_smartctl(),
         Some(PathBuf::from("/opt/homebrew/bin/smartctl")),
         Some(PathBuf::from("/usr/local/bin/smartctl")),
     ]
     .into_iter()
     .flatten()
     .find(|p| p.is_file())
+}
+
+/// The copy inside MacTriage.app. Whoever can replace it can replace this
+/// binary too, so it needs no separate ownership check before a root run.
+fn bundled_smartctl() -> Option<PathBuf> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("smartctl")))
+}
+
+/// Whether root may run `tool`: the file and every directory above it, along
+/// both the given path and the path it resolves to, must be root-owned and not
+/// writable by other users. Homebrew's copy fails this (its prefix is owned by
+/// the user who installed it).
+pub fn root_may_run(tool: &Path) -> Result<(), String> {
+    use std::os::unix::fs::MetadataExt;
+    let real = std::fs::canonicalize(tool).map_err(|e| format!("unresolvable ({e})"))?;
+    let given_dir = tool.parent().unwrap_or(Path::new("/"));
+    for p in real.ancestors().chain(given_dir.ancestors()) {
+        let m = std::fs::metadata(p).map_err(|e| format!("{}: {e}", p.display()))?;
+        if let Some(why) = crate::security::unsafe_owner_mode(m.uid(), m.gid(), m.mode()) {
+            return Err(format!("{} is {why}", p.display()));
+        }
+    }
+    Ok(())
 }
 
 /// Parse `smartctl -j -a <disk>`. Exit-status bits per smartctl(8) EXIT STATUS:
@@ -258,6 +282,14 @@ pub fn ssd_check(disk: &str) -> SsdOutcome {
     };
     if !tool.is_file() {
         return skip(format!("smartctl not found at {}", tool.display()));
+    }
+    if crate::util::is_root() && Some(&tool) != bundled_smartctl().as_ref() {
+        if let Err(why) = root_may_run(&tool) {
+            return skip(format!(
+                "smartctl at {} was not run as root: {why}",
+                tool.display()
+            ));
+        }
     }
     let (out, timed_out) = run_with_timeout(
         &tool.to_string_lossy(),
