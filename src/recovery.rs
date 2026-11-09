@@ -47,7 +47,7 @@ pub fn assess(report: &Report, full_recovery_coverage: bool) -> RecoveryAssessme
             .filter(|c| c.status != CoverageStatus::Read)
         {
             assessment.blockers.push(format!(
-                "{} was {} ({}); do not erase or use DFU Restore until it is read.",
+                "{} was {}: {}. Do not erase or use DFU Restore until it is read.",
                 c.source,
                 c.status.label(),
                 c.detail
