@@ -305,7 +305,7 @@ pub fn collect_scan(
         let t = Instant::now();
         let log_res = logscan::scan(
             log_since,
-            opts.from.as_ref().map(|_| until),
+            until,
             &cats,
             Duration::from_secs(opts.timeout),
             opts.verbose,
@@ -324,8 +324,16 @@ pub fn collect_scan(
         cancelled |= log_res.cancelled;
         if log_res.timed_out {
             report.complete = false;
+            let read = match log_res.read_since {
+                Some(t) => format!(
+                    "the newest {} (from {}) was read in full; older events were read only in part",
+                    crate::util::human_duration((until - t).num_seconds().max(0) as u64),
+                    t.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")
+                ),
+                None => "even the newest slice of the window was read only in part".into(),
+            };
             report.notes.push(format!(
-                "unified-log pass hit the {}s timeout — log show reads oldest-first, so the MOST RECENT events are missing (raise --timeout or shrink --last)",
+                "unified-log pass hit the {}s timeout: {read} (raise --timeout or shrink --last)",
                 opts.timeout
             ));
         }

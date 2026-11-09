@@ -2498,6 +2498,37 @@ fn thermal_field_run() -> Vec<(Option<chrono::DateTime<chrono::Utc>>, &'static s
 }
 
 #[test]
+fn log_window_is_read_newest_slice_first() {
+    use crate::logscan::log_slices;
+    use chrono::{TimeZone, Utc};
+    let until = Utc.with_ymd_and_hms(2026, 11, 9, 12, 0, 0).unwrap();
+    let hours = |h: i64| until - chrono::Duration::hours(h);
+
+    let six = log_slices(hours(6), until);
+    assert_eq!(six.len(), 6);
+    assert_eq!(six[0], (hours(1), until), "the newest hour comes first");
+    assert_eq!(six[5].0, hours(6));
+    // Adjacent slices share a boundary, with no gap and no overlap.
+    assert!(six.windows(2).all(|w| w[0].0 == w[1].1));
+
+    let week = log_slices(hours(24 * 7), until);
+    assert_eq!(week.len(), 12, "at most 12 slices");
+    assert_eq!(week[11].0, hours(24 * 7));
+    assert_eq!(week[0].1, until);
+
+    let short = log_slices(until - chrono::Duration::minutes(30), until);
+    assert_eq!(short.len(), 1);
+
+    // Sub-second ends are cut to whole seconds, which is what --start/--end take.
+    let ragged = until + chrono::Duration::milliseconds(700);
+    let s = log_slices(hours(2), ragged);
+    assert!(s
+        .iter()
+        .all(|(a, b)| a.timestamp_subsec_nanos() == 0 && b.timestamp_subsec_nanos() == 0));
+    assert_eq!(s.last().unwrap().0, hours(2));
+}
+
+#[test]
 fn thermal_counts_one_episode_not_every_echo() {
     use crate::logscan::{thermal_elevated, thermal_verdict};
     let run = thermal_field_run();
