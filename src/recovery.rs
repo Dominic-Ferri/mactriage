@@ -62,25 +62,34 @@ fn assess_findings(
             )
     });
     let panic_kext = has_rule(findings, "correlate.panic_kext");
-    let panic_count: u32 = findings
+    // Panics the classifier blamed on software (a third-party kext, a hung
+    // system process) point at a component to repair, not at the hardware.
+    let software_blame = findings.iter().find_map(software_panic_blame);
+    let (software_panics, panic_count) = findings
         .iter()
         .filter(|f| f.rule_id == "file.kernel_panic")
-        .map(|f| f.count.max(1))
-        .sum();
+        .fold((0u32, 0u32), |(sw, other), f| {
+            if software_panic_blame(f).is_some() {
+                (sw + f.count.max(1), other)
+            } else {
+                (sw, other + f.count.max(1))
+            }
+        });
     let update_failures = rule_count(findings, "log.software_update");
     let backup_problem = has_rule(findings, "snap.tm_stale") || has_rule(findings, "log.backupd");
     let mdm_present = has_rule(findings, "posture.mdm_profiles");
-    let repairable_software = findings.iter().any(|f| {
-        matches!(
-            f.rule_id.as_str(),
-            "correlate.crash_loop"
-                | "correlate.story"
-                | "audit.launch_broken"
-                | "audit.btm_orphan"
-                | "log.kext"
-                | "log.launchd_services"
-        ) && f.severity >= Severity::Medium
-    });
+    let repairable_software = software_blame.is_some()
+        || findings.iter().any(|f| {
+            matches!(
+                f.rule_id.as_str(),
+                "correlate.crash_loop"
+                    | "correlate.story"
+                    | "audit.launch_broken"
+                    | "audit.btm_orphan"
+                    | "log.kext"
+                    | "log.launchd_services"
+            ) && f.severity >= Severity::Medium
+        });
     let os_wide_failure = findings.iter().any(|f| {
         matches!(
             f.rule_id.as_str(),
@@ -186,14 +195,20 @@ fn assess_findings(
             required_before_clean_install: clean_install_gates(),
         }
     } else if repairable_software {
+        let mut reasons = vec![
+            "The strongest evidence points to a specific app, service, launch item, or extension rather than system-wide macOS corruption."
+                .to_string(),
+        ];
+        if let Some(blame) = software_blame {
+            reasons.push(format!(
+                "{software_panics} kernel panic event(s) point to software, not hardware: {blame}."
+            ));
+        }
         RecoveryAssessment {
             recommendation: RecoveryRecommendation::RepairSoftwareFirst,
             clean_install: CleanInstallStatus::NotIndicated,
             confidence: Confidence::Medium,
-            reasons: vec![
-                "The strongest evidence points to a specific app, service, launch item, or extension rather than system-wide macOS corruption."
-                    .into(),
-            ],
+            reasons,
             blockers: Vec::new(),
             next_steps: vec![
                 "Repair, update, or remove the named component and reproduce the original failure before escalating.".into(),
@@ -335,6 +350,21 @@ fn is_hardware_panic(finding: &Finding) -> bool {
             .evidence
             .iter()
             .any(|e| e.source == "panic classifier" && e.excerpt.starts_with("hardware-suspect"))
+}
+
+/// The classifier's explanation, without its tag, for a panic it blamed on
+/// software (files.rs `classify_panic`).
+fn software_panic_blame(finding: &Finding) -> Option<&str> {
+    if finding.rule_id != "file.kernel_panic" {
+        return None;
+    }
+    finding
+        .evidence
+        .iter()
+        .find(|e| e.source == "panic classifier")?
+        .excerpt
+        .strip_prefix(crate::files::BlameClass::Software.tag())
+        .map(|rest| rest.trim_start_matches(": "))
 }
 
 fn finding_text(finding: &Finding) -> String {
@@ -544,6 +574,58 @@ mod tests {
         assert_eq!(
             assessment.recommendation,
             RecoveryRecommendation::ReinstallMacosInPlace
+        );
+    }
+
+    fn tagged_panic(excerpt: &str) -> Finding {
+        let mut panic = Finding::new(
+            "file.kernel_panic",
+            Severity::Critical,
+            "panic",
+            "Kernel panic",
+        );
+        panic.evidence.push(Evidence {
+            source: "panic classifier".into(),
+            excerpt: excerpt.into(),
+        });
+        panic
+    }
+
+    #[test]
+    fn software_panics_are_repaired_not_sent_to_hardware() {
+        let watchdog = "software: a hung system process (userspace watchdog) (marker \"userspace watchdog timeout\")";
+        let two = [tagged_panic(watchdog), tagged_panic(watchdog)];
+        let assessment = assess_findings(&two, true, true, "Apple M4", false);
+        assert_eq!(
+            assessment.recommendation,
+            RecoveryRecommendation::RepairSoftwareFirst
+        );
+        assert!(assessment
+            .reasons
+            .iter()
+            .any(|r| r.contains("2 kernel panic event(s) point to software")
+                && r.contains("userspace watchdog")));
+        // Control: two panics with no classifier tag still go to hardware.
+        let plain = Finding::new(
+            "file.kernel_panic",
+            Severity::Critical,
+            "panic",
+            "Kernel trap",
+        );
+        let assessment = assess_findings(&[plain.clone(), plain], true, true, "Apple M4", false);
+        assert_eq!(
+            assessment.recommendation,
+            RecoveryRecommendation::FirmwareOrHardwareFirst
+        );
+        // A hardware-suspect panic outranks a software one.
+        let mixed = [
+            tagged_panic(watchdog),
+            tagged_panic("hardware-suspect: CPU (machine check) (marker \"machine check\")"),
+        ];
+        let assessment = assess_findings(&mixed, true, true, "Apple M4", false);
+        assert_eq!(
+            assessment.recommendation,
+            RecoveryRecommendation::FirmwareOrHardwareFirst
         );
     }
 
