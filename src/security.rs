@@ -43,6 +43,7 @@ pub fn scan(root: bool) -> SecurityResult {
     managed_restrictions(&mut r);
     trusted_certs(&mut r, root);
     admins(&mut r);
+    secure_tokens(&mut r);
     extensions(&mut r);
     pending_updates(&mut r);
     boot_args(&mut r);
@@ -2241,18 +2242,81 @@ fn profiles_show() -> &'static (String, bool) {
     })
 }
 
-fn admins(r: &mut SecurityResult) {
+fn admin_members() -> Vec<String> {
     let out = run(
         "/usr/bin/dscl",
         &[".", "-read", "/Groups/admin", "GroupMembership"],
     )
     .unwrap_or_default();
-    let members: Vec<String> = out
-        .split_whitespace()
+    out.split_whitespace()
         .skip(1) // "GroupMembership:"
         .filter(|m| *m != "root")
         .map(String::from)
+        .collect()
+}
+
+/// `sysadminctl -secureTokenStatus` prints "Secure token is ENABLED for user
+/// X" (or DISABLED) on stderr. None when the line is missing.
+pub fn parse_secure_token_status(out: &str) -> Option<bool> {
+    if out.contains("Secure token is ENABLED") {
+        Some(true)
+    } else if out.contains("Secure token is DISABLED") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// On Apple silicon, reinstalling macOS, erasing, or changing startup
+/// security asks for a volume owner, which must hold a SecureToken. With no
+/// admin holding one, those recovery steps can stall.
+fn secure_tokens(r: &mut SecurityResult) {
+    let members = admin_members();
+    if members.is_empty() {
+        return;
+    }
+    let status: Vec<Option<bool>> = members
+        .iter()
+        .map(|m| {
+            run_all("/usr/sbin/sysadminctl", &["-secureTokenStatus", m])
+                .and_then(|o| parse_secure_token_status(&o))
+        })
         .collect();
+    if status.iter().all(Option::is_none) {
+        r.skipped.push(Skipped {
+            what: "SecureToken status".into(),
+            reason: "sysadminctl gave no answer".into(),
+        });
+        return;
+    }
+    let holders = status.iter().filter(|s| **s == Some(true)).count();
+    let flag = (holders == 0).then_some(Severity::Medium);
+    vital(
+        r,
+        "SecureToken admins",
+        &format!("{holders} of {}", members.len()),
+        flag,
+    );
+    if holders == 0 {
+        r.findings.push(finding(
+            "sec.securetoken_none",
+            Severity::Medium,
+            "No admin account holds a SecureToken",
+            "On Apple silicon, reinstalling macOS, erasing the Mac, and changing startup \
+             security ask for a volume owner, which must be a user with a SecureToken. No admin \
+             on this Mac has one, so those steps can fail, and FileVault cannot be managed by an \
+             admin.",
+            Some(
+                "Before any recovery step, give an admin a SecureToken (from an existing token \
+                 holder, or through the MDM bootstrap token), then confirm with \
+                 `sysadminctl -secureTokenStatus <admin>`.",
+            ),
+        ));
+    }
+}
+
+fn admins(r: &mut SecurityResult) {
+    let members = admin_members();
     if members.is_empty() {
         return;
     }

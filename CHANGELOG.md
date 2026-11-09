@@ -35,6 +35,15 @@
 - `snap.battery_health` reads the battery's `PermanentFailureStatus`. A
   nonzero value is High, even when macOS still shows the condition as Good.
   The key is absent on a healthy battery.
+- The recovery assessment checks what could block an erase. When it
+  recommends anything beyond "no erase needed":
+  - Activation Lock on (read from `system_profiler`) adds a step: have the
+    user's Apple Account password or the MDM bypass code first.
+  - A new rule, `sec.securetoken_none` (Medium), finds a Mac where no admin
+    holds a SecureToken. On Apple silicon a reinstall or erase needs a volume
+    owner, so this adds a blocker. The SecureToken vital shows a count only.
+  - An MDM enrollment says whether it came from Automated Device Enrollment,
+    which decides whether the Mac enrolls again by itself after an erase.
 
 ## Documentation (2026-10-27)
 

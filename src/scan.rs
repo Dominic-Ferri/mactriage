@@ -512,6 +512,16 @@ pub fn collect_scan(
                 .into(),
         );
     }
+    report.vitals.push(crate::report::Vital {
+        label: "Activation Lock".into(),
+        value: match report.host.activation_lock {
+            Some(true) => "on",
+            Some(false) => "off",
+            None => "unknown",
+        }
+        .into(),
+        flag: None,
+    });
     let ssd_skip = report
         .skipped
         .iter()

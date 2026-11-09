@@ -559,6 +559,7 @@ fn recovery_assessment_renders_in_terminal_html_and_json() {
             root: true,
             model_name: String::new(),
             storage: String::new(),
+            activation_lock: None,
         },
         vitals: vec![],
         findings: vec![Finding::new(
@@ -645,6 +646,24 @@ fn log_events_serialize_only_when_present() {
 }
 
 #[test]
+fn erase_readiness_inputs_parse() {
+    let hw = |status: &str| serde_json::json!({"SPHardwareDataType": [{"activation_lock_status": status}]});
+    let lock = crate::host::parse_activation_lock;
+    assert_eq!(lock(&hw("activation_lock_enabled")), Some(true));
+    assert_eq!(lock(&hw("activation_lock_disabled")), Some(false));
+    assert_eq!(lock(&hw("something_new")), None);
+    assert_eq!(lock(&serde_json::json!({"SPHardwareDataType": [{}]})), None);
+
+    let token = crate::security::parse_secure_token_status;
+    let line = |s: &str| {
+        format!("2026-11-09 07:00:00.000 sysadminctl[123:456] Secure token is {s} for user admin")
+    };
+    assert_eq!(token(&line("ENABLED")), Some(true));
+    assert_eq!(token(&line("DISABLED")), Some(false));
+    assert_eq!(token("sysadminctl: unknown option"), None);
+}
+
+#[test]
 fn unread_recovery_sources_block_an_erase() {
     use crate::report::{CleanInstallStatus, Coverage, CoverageStatus, RecoveryRecommendation};
     let mut report = crate::report::Report {
@@ -687,6 +706,37 @@ fn unread_recovery_sources_block_an_erase() {
     );
     assert!(!a.blockers.iter().any(|b| b.contains("until it is read")));
     assert_eq!(a.clean_install, CleanInstallStatus::NotYetJustified);
+
+    // Erase readiness: Activation Lock, SecureToken and ADE shape the plan.
+    report.host.activation_lock = Some(true);
+    report.vitals.push(crate::report::Vital {
+        label: "MDM".into(),
+        value: "mdm.example.com (DEP)".into(),
+        flag: None,
+    });
+    report.findings.push(Finding::new(
+        "sec.securetoken_none",
+        Severity::Medium,
+        "security",
+        "No admin account holds a SecureToken",
+    ));
+    let a = crate::recovery::assess(&report, true);
+    assert!(a
+        .next_steps
+        .iter()
+        .any(|s| s.starts_with("Activation Lock is on")));
+    assert!(a
+        .reasons
+        .iter()
+        .any(|r| r.contains("Automated Device Enrollment, so it enrolls")));
+    assert!(a
+        .blockers
+        .iter()
+        .any(|b| b.starts_with("No admin holds a SecureToken")));
+    assert_eq!(a.clean_install, CleanInstallStatus::Blocked);
+    report.findings.pop();
+    report.vitals.clear();
+    report.host.activation_lock = None;
 
     report.coverage[3].status = CoverageStatus::NotRead;
     report.coverage[3].detail = "smartctl not bundled or installed".into();
