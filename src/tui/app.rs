@@ -1,3 +1,4 @@
+use super::trace::{Heartbeat, Trace};
 use crate::protocol::WorkerEvent;
 use crate::report::{HostInfo, Report};
 use chrono::Local;
@@ -7,6 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -127,6 +129,9 @@ pub struct App {
     worker_stream_closed: bool,
     worker_exit_description: String,
     worker_stderr: String,
+    pub(super) trace: Trace,
+    pub(super) hb: Arc<Heartbeat>,
+    traced_progress: (Instant, u32),
 }
 
 impl App {
@@ -164,6 +169,9 @@ impl App {
             worker_stream_closed: false,
             worker_exit_description: String::new(),
             worker_stderr: String::new(),
+            trace: Trace::default(),
+            hb: Arc::default(),
+            traced_progress: (Instant::now(), u32::MAX),
         }
     }
 
@@ -214,11 +222,24 @@ impl App {
         let profile = self.selected_profile();
         match self.spawn_worker(profile) {
             Ok(worker) => {
+                self.trace.line(format!(
+                    "worker started: {} · pid {} · args {}",
+                    profile.label(),
+                    worker.child.id(),
+                    profile.worker_args().join(" ")
+                ));
+                self.hb.worker_started(worker.child.id(), self.privileged);
+                self.traced_progress = (Instant::now(), u32::MAX);
                 self.worker = Some(worker);
                 self.screen = Screen::Running;
                 self.progress = 0.0;
                 self.progress_label = "starting scan worker".into();
-                self.status = format!("{} started", profile.label());
+                self.status = match self.trace.path() {
+                    Some(path) => {
+                        format!("{} started · trace: {}", profile.label(), path.display())
+                    }
+                    None => format!("{} started", profile.label()),
+                };
                 self.report = None;
                 self.selected_finding = 0;
                 self.result_scroll = 0;
@@ -233,6 +254,7 @@ impl App {
                 self.worker_stderr.clear();
             }
             Err(error) => {
+                self.trace.line(format!("worker failed to start: {error}"));
                 self.status = format!("Could not start scan: {error}");
                 self.exit_code = 70;
             }
@@ -268,8 +290,10 @@ impl App {
             .ok_or_else(|| std::io::Error::other("worker stderr was not available"))?;
 
         let event_tx = self.background_tx.clone();
+        let hb = self.hb.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
+                hb.worker_event();
                 match line {
                     Ok(line) if line.trim().is_empty() => {}
                     Ok(line) => match serde_json::from_str::<WorkerEvent>(&line) {
@@ -315,8 +339,11 @@ impl App {
                 BackgroundEvent::Worker(event) => self.handle_worker_event(event),
                 BackgroundEvent::Stderr(line) => {
                     self.worker_stderr = line.chars().take(240).collect();
+                    self.trace
+                        .line(format!("worker stderr: {}", self.worker_stderr));
                 }
                 BackgroundEvent::StreamClosed => {
+                    self.trace.line("worker output stream closed");
                     self.worker_stream_closed = true;
                     self.finalize_worker_state();
                 }
@@ -330,6 +357,8 @@ impl App {
         match status {
             Some(Ok(Some(status))) => {
                 changed = true;
+                self.trace.line(format!("worker exited: {status}"));
+                self.hb.worker_stopped();
                 self.worker = None;
                 self.worker_exited = true;
                 self.worker_exit_description = status.to_string();
@@ -338,6 +367,8 @@ impl App {
             Some(Ok(None)) | None => {}
             Some(Err(error)) => {
                 changed = true;
+                self.trace.line(format!("worker status error: {error}"));
+                self.hb.worker_stopped();
                 self.worker = None;
                 self.worker_exited = true;
                 self.worker_stream_closed = true;
@@ -376,9 +407,25 @@ impl App {
         match event {
             WorkerEvent::Progress { overall, label } => {
                 self.progress = overall.clamp(0.0, 1.0);
+                self.hb.progress(self.progress, &label);
+                // One line per 5% step or label change, at most every 2 s.
+                let bucket = (self.progress * 20.0) as u32;
+                let (at, last_bucket) = self.traced_progress;
+                if bucket != last_bucket
+                    || (label != self.progress_label && at.elapsed() >= Duration::from_secs(2))
+                {
+                    self.traced_progress = (Instant::now(), bucket);
+                    self.trace
+                        .line(format!("progress {:.1}% · {label}", self.progress * 100.0));
+                }
                 self.progress_label = label;
             }
             WorkerEvent::Complete { report } => {
+                self.trace.line(format!(
+                    "scan complete: {} findings · complete={}",
+                    report.findings.len(),
+                    report.complete
+                ));
                 self.worker_had_terminal_event = true;
                 self.exit_code = report.exit_code();
                 self.report = Some(*report);
@@ -394,6 +441,7 @@ impl App {
                 self.finalize_worker_state();
             }
             WorkerEvent::Cancelled { report } => {
+                self.trace.line("scan cancelled");
                 self.worker_had_terminal_event = true;
                 self.exit_code = 130;
                 self.report = Some(*report);
@@ -404,6 +452,7 @@ impl App {
                 self.finalize_worker_state();
             }
             WorkerEvent::Error { code, message } => {
+                self.trace.line(format!("scan error {code}: {message}"));
                 self.worker_had_terminal_event = true;
                 self.exit_code = code;
                 self.screen = Screen::Home;
@@ -575,6 +624,10 @@ impl App {
         };
         let result = create_new(&html_path, html.as_bytes())
             .and_then(|_| create_new(&json_path, json.as_bytes()));
+        self.trace.line(match &result {
+            Ok(()) => format!("exported {}", html_path.display()),
+            Err(e) => format!("export failed: {e}"),
+        });
         self.status = match result {
             Ok(()) => format!(
                 "Exported {} and {}",
