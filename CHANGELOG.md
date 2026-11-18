@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.14.2 (2026-11-18)
+
+- The unified-log progress bar no longer stops at about 83% while the log is
+  still being read. Its time estimate covered the whole log pass and stopped
+  just short of the end, while the bar never moves backward. When the real read
+  took longer than the estimate, the bar sat at 82.6% for minutes, which looked
+  like a hang. On one full-coverage run it sat there for 100 s while the label
+  still moved from "newest 3h 25m" to "newest 5h 44m of 6h read". Now the
+  estimate starts over for each slice of the log and never passes the end of
+  the slice being read, so the bar follows how much of the log has actually
+  been read.
+
 ## 0.14.1 (2026-11-18)
 
 - The dashboard now writes a trace file next to its reports, named

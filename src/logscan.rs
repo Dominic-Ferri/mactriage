@@ -448,11 +448,12 @@ pub fn scan(
     // Progress is driven two ways and the bar takes the max:
     //  - real position: slices finished so far, plus how far into the current
     //    slice the newest line's timestamp is (each slice reads oldest-first);
-    //  - wall-clock estimate (~25s per hour of window) so the bar still moves
-    //    on quiet systems where matches are sparse.
+    //  - wall-clock estimate (~25s per hour of window), per slice and capped
+    //    below that slice's end, so the bar still moves on quiet systems but
+    //    never runs ahead of the slice being read. A global estimate used to
+    //    reach its cap on slow Macs and park the bar at ~83% for minutes.
     let shown_frac = std::cell::Cell::new(0.0f64);
-    let pass_start = std::time::Instant::now();
-    let est_total_secs = (window_total / 3600.0 * 25.0).max(10.0);
+    let est_slice_secs = (window_total / 3600.0 * 25.0).max(10.0) / slices.len() as f64;
 
     // One deadline for the whole pass: each slice gets whatever time is left.
     let deadline = std::time::Instant::now() + timeout;
@@ -485,6 +486,7 @@ pub fn scan(
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         let slice_secs = (slice_end - slice_start).num_seconds().max(1) as f64;
         let read_before = (until - slice_end).num_seconds().max(0) as f64;
+        let slice_t0 = std::time::Instant::now();
         // Absolute path: bare `log` can be shadowed by shell aliases on some setups.
         let outcome = crate::util::stream_lines(
             "/usr/bin/log",
@@ -560,7 +562,8 @@ pub fn scan(
             || {
                 // Idle tick: advance by wall-clock estimate, capped so the bar never
                 // claims completion before the pass actually ends.
-                let est = (pass_start.elapsed().as_secs_f64() / est_total_secs).min(0.97);
+                let into = (slice_t0.elapsed().as_secs_f64() / est_slice_secs).min(0.97);
+                let est = (k as f64 + into) / slices.len() as f64;
                 if est > shown_frac.get() {
                     shown_frac.set(est);
                     progress.update(est, None);
