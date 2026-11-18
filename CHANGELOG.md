@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.14.1 (2026-11-18)
+
+- The dashboard now writes a trace file next to its reports, named
+  `MacTriage-<time>-trace.log` (Desktop, else the home folder, mode 0600, never
+  overwritten). It records the macOS version and model, whether the scan has
+  full coverage, the worker's process ID, progress in 5% steps, worker error
+  output, how the worker exited, keys pressed, and the export result. The
+  status line shows where the file is.
+- A watchdog thread checks the dashboard every second. If the screen loop has
+  not run for 5 s, it logs which step it was stuck in (reading worker output,
+  drawing, waiting for a key, or handling a key). It also saves a 3 s `sample`
+  of the dashboard next to the trace. If the scan worker sends nothing for
+  20 s, it logs the last progress label and samples the worker. A full-coverage
+  scan samples it through `sudo -n`, so there is never a password prompt. Every
+  30 s during a scan it also logs an "alive" line.
+- Why: on a macOS 26.6.2 Mac, a full-coverage dashboard froze at 5% with its
+  elapsed timer stopped, and closing the window left no evidence. A stopped
+  timer means the dashboard loop itself stalled, not only the scan. If the
+  whole dashboard process is stopped (for example by terminal job control),
+  the watchdog stops too. The trace then ends with no STALL line, which is
+  itself the evidence.
+
 ## 0.14.0 (2026-11-09)
 
 - An UNKNOWN scan now exits with code 50. Before, an incomplete scan with

@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2012%2B-F4BD47?style=flat-square&logo=apple&logoColor=white&labelColor=000000" alt="Platform: macOS 12 or later">
   <img src="https://img.shields.io/badge/language-Rust-C00027?style=flat-square&logo=rust&logoColor=white&labelColor=000000" alt="Language: Rust">
-  <img src="https://img.shields.io/badge/version-0.14.0-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.14.0">
+  <img src="https://img.shields.io/badge/version-0.14.1-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.14.1">
   <img src="https://img.shields.io/badge/license-MIT-C00027?style=flat-square&labelColor=000000" alt="License: MIT">
   <img src="https://img.shields.io/badge/mode-read--only-C00027?style=flat-square&labelColor=000000" alt="Mode: read-only">
 </p>
