@@ -576,11 +576,13 @@ pub(crate) struct PanicKind {
 pub(crate) const PANIC_KINDS: &[PanicKind] = &[
     PanicKind {
         marker: "userspace watchdog timeout",
-        meaning: "a critical system process stopped checking in with the watchdog, so the kernel \
-                  restarted the Mac on purpose (the named service hung; the kernel itself was fine)",
+        meaning: "a critical system process stopped checking in with the userspace watchdog, so \
+                  the kernel restarted the Mac on purpose. The named service was stuck; the panic \
+                  does not say whether on its own code or on something it waited for (graphics, \
+                  storage, a kernel extension)",
         next_step: Some(
-            "Look for crash, hang and launchd findings for the service named in the evidence. A \
-             third-party agent that blocks that service (security, VPN, MDM) is the usual cause.",
+            "Look for crash, hang, GPU, disk and launchd findings around the panic time, \
+             especially for the service named in the evidence.",
         ),
     },
     PanicKind {
@@ -619,7 +621,8 @@ pub(crate) const PANIC_KINDS: &[PanicKind] = &[
     },
     PanicKind {
         marker: "watchdog timeout",
-        meaning: "a hardware watchdog fired because the system stopped responding entirely",
+        meaning: "the kernel watchdog got no check-ins from watchdogd in time: the system was hung \
+                  or starved, either in userspace or in the kernel",
         next_step: None,
     },
     PanicKind {
@@ -632,40 +635,73 @@ pub(crate) const PANIC_KINDS: &[PanicKind] = &[
 impl PanicContext {
     pub(crate) fn from_panic_string(ps: &str) -> Self {
         let mut c = PanicContext::default();
-        let lower = ps.to_ascii_lowercase();
-        c.kind = PANIC_KINDS.iter().find(|k| lower.contains(k.marker));
-        for line in ps.lines().map(str::trim) {
+        let lines: Vec<String> = ps.lines().map(|l| clean(l).trim().to_string()).collect();
+        // Classify from the headline only: the `panic(cpu …)` line and the two
+        // lines after it. The backtrace, task list and zone dump below it can
+        // mention any of the markers without being the reason for the panic.
+        let head_at = lines
+            .iter()
+            .position(|l| l.to_ascii_lowercase().contains("panic("))
+            .or_else(|| lines.iter().position(|l| !l.is_empty()))
+            .unwrap_or(0);
+        let headline = lines
+            .iter()
+            .skip(head_at)
+            .take(3)
+            .map(|l| l.to_ascii_lowercase())
+            .collect::<Vec<_>>()
+            .join(" ");
+        c.kind = PANIC_KINDS.iter().find(|k| headline.contains(k.marker));
+        // A value after the label, or (Intel panic format) on the next
+        // non-empty line.
+        let value = |i: usize, line: &str| -> Option<String> {
+            let inline = line.split_once(':').map(|(_, v)| v.trim()).unwrap_or("");
+            let v = if inline.is_empty() {
+                lines.iter().skip(i + 1).find(|l| !l.is_empty())?.as_str()
+            } else {
+                inline
+            };
+            (!v.is_empty() && !v.eq_ignore_ascii_case("not set")).then(|| one_line(v, 160))
+        };
+        for (i, line) in lines.iter().enumerate() {
             let l = line.to_ascii_lowercase();
-            if l.starts_with("panicked task") && c.panicked_process.is_none() {
+            if c.panicked_process.is_none() && l.starts_with("panicked task") {
                 // "Panicked task 0x…: 3402 pages, 16 threads: pid 123: WindowServer"
                 if let Some(idx) = line.rfind("pid ") {
-                    let rest = &line[idx..];
-                    c.panicked_process = rest
+                    c.panicked_process = line[idx..]
                         .split_once(": ")
                         .map(|(pid, name)| format!("{} ({pid})", name.trim()));
                 }
-            } else if l.starts_with("last started kext") && c.last_started_kext.is_none() {
+            } else if c.panicked_process.is_none()
+                && l.starts_with("bsd process name corresponding to current thread:")
+            {
+                c.panicked_process = value(i, line);
+            } else if c.last_started_kext.is_none() && l.starts_with("last started kext") {
                 c.last_started_kext = line
                     .split_once(": ")
                     .and_then(|(_, k)| k.split_whitespace().next())
                     .map(String::from);
-            } else if (l.starts_with("os version:") || l.starts_with("mac os version:"))
-                && c.os_version.is_none()
+            } else if c.os_version.is_none()
+                && ["os version:", "mac os version:", "macos version:"]
+                    .iter()
+                    .any(|p| l.starts_with(p))
             {
-                c.os_version = line.split_once(':').map(|(_, v)| v.trim().to_string());
-            } else if l.starts_with("kernel version:") && c.kernel_version.is_none() {
-                c.kernel_version = line.split_once(':').map(|(_, v)| one_line(v, 160));
-            } else if l.starts_with("iboot version:") && c.iboot_version.is_none() {
-                c.iboot_version = line.split_once(':').map(|(_, v)| v.trim().to_string());
+                c.os_version = value(i, line);
+            } else if c.kernel_version.is_none() && l.starts_with("kernel version:") {
+                c.kernel_version = value(i, line);
+            } else if c.iboot_version.is_none() && l.starts_with("iboot version:") {
+                c.iboot_version = value(i, line);
             }
             if c.watchdog_service.is_none() {
-                if let Some(idx) = l.find("no successful checkins from ") {
-                    let rest = &line[idx + "no successful checkins from ".len()..];
-                    c.watchdog_service = rest
-                        .split([',', ' ', '\t'])
-                        .next()
-                        .filter(|s| !s.is_empty())
-                        .map(String::from);
+                for marker in ["no successful checkins from ", "no checkins from "] {
+                    if let Some(idx) = l.find(marker) {
+                        c.watchdog_service = line[idx + marker.len()..]
+                            .split([',', ' ', '\t'])
+                            .next()
+                            .filter(|s| !s.is_empty())
+                            .map(String::from);
+                        break;
+                    }
                 }
             }
         }
@@ -680,7 +716,10 @@ impl PanicContext {
                 "watchdog service that stopped checking in",
                 &self.watchdog_service,
             ),
-            ("last started kext", &self.last_started_kext),
+            (
+                "last started kext (not necessarily the cause)",
+                &self.last_started_kext,
+            ),
             ("os version", &self.os_version),
             ("kernel version", &self.kernel_version),
             ("iBoot version", &self.iboot_version),
@@ -1008,7 +1047,7 @@ fn parse_crash_309(
     // when either dies, macOS ends the session and every open app quits, so
     // the user sees a black screen and the login window: a "soft crash" of
     // the whole Mac without a kernel panic.
-    let session = SESSION_PROCESSES.contains(&proc_name.as_str());
+    let session = is_session_process(&proc_name, v.get("procPath").and_then(|p| p.as_str()));
     let mut f = Finding::new(
         "file.crash",
         if session {
@@ -1018,7 +1057,7 @@ fn parse_crash_309(
         },
         "crash",
         &if session {
-            format!("{proc_name} crashed ({exc_type}): the login session ended and open apps quit")
+            format!("{proc_name} crashed ({exc_type}): this normally ends the login session")
         } else {
             format!("{proc_name} crashed ({exc_type})")
         },
@@ -1030,13 +1069,14 @@ fn parse_crash_309(
     );
     if session {
         f.detail.push_str(&format!(
-            " {proc_name} is part of the login session itself, so its crash logged the user out \
-             without a kernel panic."
+            " {proc_name} is the system's own login-session component, so its crash normally \
+             logs the user out and quits every open app, without a kernel panic."
         ));
     }
-    for meaning in ctx.meanings() {
+    let reading = ctx.meanings();
+    if !reading.is_empty() {
         f.detail.push(' ');
-        f.detail.push_str(&meaning);
+        f.detail.push_str(&reading.join(" "));
     }
     // "Code Signature Invalid" / "Launch Constraint Violation" kills cannot be
     // fixed by reinstalling the app — for system components (Dock, Finder) that
@@ -1062,13 +1102,52 @@ fn parse_crash_309(
         source: path.display().to_string(),
         excerpt,
     });
+    if !reading.is_empty() {
+        // Lets the correlator quote this report's reading without the
+        // generic sentences around it.
+        f.evidence.push(Evidence {
+            source: READING_SOURCE.into(),
+            excerpt: reading.join(" "),
+        });
+    }
     f.evidence.extend(ctx.evidence());
     f.references = ctx.references();
     Some(ParsedReport::Finding(f))
 }
 
-/// Processes whose crash ends the user's login session.
-const SESSION_PROCESSES: &[&str] = &["WindowServer", "loginwindow"];
+/// Evidence source of mactriage's own reading of one crash report.
+pub(crate) const READING_SOURCE: &str = "mactriage reading";
+
+/// The system's login-session processes, by name and the folder macOS ships
+/// them in, so a third-party binary that shares the name is not mistaken for
+/// one. A report without `procPath` is trusted by name.
+const SESSION_PROCESSES: &[(&str, &str)] = &[
+    (
+        "WindowServer",
+        "/System/Library/PrivateFrameworks/SkyLight.framework/",
+    ),
+    (
+        "loginwindow",
+        "/System/Library/CoreServices/loginwindow.app/",
+    ),
+];
+
+pub(crate) fn is_session_process(name: &str, path: Option<&str>) -> bool {
+    SESSION_PROCESSES
+        .iter()
+        .any(|(n, prefix)| *n == name && path.is_none_or(|p| p.starts_with(prefix)))
+}
+
+/// System libraries whose frames sit on top of the stack in an abort or a
+/// raised exception; the code that called them is the useful "crashed in".
+const ABORT_PLUMBING: &[&str] = &[
+    "libsystem_kernel.dylib",
+    "libsystem_pthread.dylib",
+    "libsystem_c.dylib",
+    "libc++abi.dylib",
+    "libobjc.A.dylib",
+    "libdyld.dylib",
+];
 
 /// The fields of a JSON crash report (bug_type 309) that explain WHY a process
 /// died, as laid out in Apple's "Interpreting the JSON format of a crash
@@ -1115,8 +1194,9 @@ impl CrashContext {
                             _ => Vec::new(),
                         };
                         msgs.into_iter()
-                            .map(move |m| format!("{lib}: {}", one_line(&m, 300)))
+                            .map(move |m| format!("{}: {}", clean(lib), one_line(&m, 300)))
                     })
+                    .take(8)
                     .collect()
             })
             .unwrap_or_default();
@@ -1125,42 +1205,66 @@ impl CrashContext {
             .and_then(|k| k.as_str())
             .map(|k| {
                 k.lines()
-                    .map(str::trim)
+                    .map(|l| one_line(l, 200))
                     .filter(|l| !l.is_empty())
-                    .map(String::from)
+                    .take(8)
                     .collect()
             })
             .unwrap_or_default();
+        // Apple's JSON reference names the key `vmregioninfo`; current reports
+        // carry both spellings.
         let vm_region = v
-            .get("vmRegionInfo")
+            .get("vmregioninfo")
+            .or_else(|| v.get("vmRegionInfo"))
             .and_then(|r| r.as_str())
             .and_then(|r| r.lines().next())
             .map(|l| one_line(l, 200));
+        fn frame_name<'a>(
+            v: &'a serde_json::Value,
+            frame: &'a serde_json::Value,
+        ) -> Option<(&'a str, Option<&'a str>)> {
+            let image = frame
+                .get("imageIndex")
+                .and_then(|i| i.as_u64())
+                .and_then(|i| v.pointer(&format!("/usedImages/{i}/name")))
+                .and_then(|n| n.as_str())?;
+            Some((image, frame.get("symbol").and_then(|x| x.as_str())))
+        }
+        // Skip the system frames only for an abort; in a memory fault the top
+        // frame is where the fault really happened, even inside a library.
+        let aborted = v.pointer("/exception/type").and_then(|t| t.as_str()) == Some("EXC_CRASH");
         let crashed_in = v
             .get("faultingThread")
             .and_then(|t| t.as_u64())
-            .and_then(|t| v.pointer(&format!("/threads/{t}/frames/0")))
-            .and_then(|frame| {
-                let image = frame
-                    .get("imageIndex")
-                    .and_then(|i| i.as_u64())
-                    .and_then(|i| v.pointer(&format!("/usedImages/{i}/name")))
-                    .and_then(|n| n.as_str())?;
-                Some(match frame.get("symbol").and_then(|x| x.as_str()) {
-                    Some(sym) => format!("{image} ({sym})"),
-                    None => image.to_string(),
-                })
+            .and_then(|t| v.pointer(&format!("/threads/{t}/frames")))
+            .and_then(|f| f.as_array())
+            .and_then(|frames| {
+                let named: Vec<(&str, Option<&str>)> = frames
+                    .iter()
+                    .take(64)
+                    .filter_map(|f| frame_name(v, f))
+                    .collect();
+                named
+                    .iter()
+                    .find(|(image, _)| !aborted || !ABORT_PLUMBING.contains(image))
+                    .or(named.first())
+                    .map(|(image, sym)| match sym {
+                        Some(sym) => clean(&format!("{image} ({sym})")),
+                        None => clean(image),
+                    })
             });
-        let responsible = s("/responsibleProc").filter(|r| Some(r) != s("/procName").as_ref());
+        let responsible = s("/responsibleProc")
+            .filter(|r| Some(r) != s("/procName").as_ref())
+            .map(|r| clean(&r));
         CrashContext {
-            exc_type: s("/exception/type"),
-            signal: s("/exception/signal"),
-            subtype: s("/exception/subtype"),
-            codes: s("/exception/codes"),
-            term_namespace: s("/termination/namespace"),
+            exc_type: s("/exception/type").map(|x| clean(&x)),
+            signal: s("/exception/signal").map(|x| clean(&x)),
+            subtype: s("/exception/subtype").map(|x| one_line(&x, 200)),
+            codes: s("/exception/codes").map(|x| one_line(&x, 200)),
+            term_namespace: s("/termination/namespace").map(|x| clean(&x)),
             term_code: v.pointer("/termination/code").and_then(|c| c.as_u64()),
-            term_indicator: s("/termination/indicator"),
-            term_by_proc: s("/termination/byProc"),
+            term_indicator: s("/termination/indicator").map(|x| one_line(&x, 200)),
+            term_by_proc: s("/termination/byProc").map(|x| clean(&x)),
             asi,
             ktriage,
             vm_region,
@@ -1173,36 +1277,50 @@ impl CrashContext {
     /// Faulting address of a memory-access exception, from the subtype
     /// ("KERN_INVALID_ADDRESS at 0x…").
     pub(crate) fn fault_address(&self) -> Option<u64> {
+        // "KERN_INVALID_ADDRESS at 0x… -> 0x… (possible pointer
+        // authentication failure)": the first run of hex digits only.
         let sub = self.subtype.as_deref()?;
-        let hex = sub
-            .rsplit("at 0x")
-            .next()
-            .filter(|_| sub.contains("at 0x"))?;
-        u64::from_str_radix(hex.trim(), 16).ok()
+        let (_, rest) = sub.split_once("at 0x")?;
+        let hex: String = rest.chars().take_while(|c| c.is_ascii_hexdigit()).collect();
+        u64::from_str_radix(&hex, 16).ok()
     }
 
-    /// A read of address 0 (or the first page) is a NULL pointer dereference.
-    pub(crate) fn null_pointer(&self) -> bool {
+    fn invalid_address(&self) -> bool {
         self.exc_type.as_deref() == Some("EXC_BAD_ACCESS")
             && self
                 .subtype
                 .as_deref()
                 .is_some_and(|s| s.starts_with("KERN_INVALID_ADDRESS"))
-            && self.fault_address().is_some_and(|a| a < 0x1000)
     }
 
-    /// The kernel could not page the program's code or data in from disk, so
-    /// the crash is a symptom of a storage read failure, not a program bug.
-    pub(crate) fn pagein_failure(&self) -> bool {
-        let kernel_says_io = self.ktriage.iter().any(|l| {
-            let l = l.to_ascii_lowercase();
-            l.contains("pagein") || l.contains("page has error") || l.contains("i/o error")
-        });
-        let memory_error = self
-            .subtype
+    /// Address 0 exactly: Apple's own example of a NULL pointer.
+    pub(crate) fn null_pointer(&self) -> bool {
+        self.invalid_address() && self.fault_address() == Some(0)
+    }
+
+    /// A nonzero address in the first page: most often a field read through
+    /// a NULL pointer, but the address alone does not prove it.
+    pub(crate) fn near_null(&self) -> bool {
+        self.invalid_address() && self.fault_address().is_some_and(|a| a > 0 && a < 0x1000)
+    }
+
+    pub(crate) fn pointer_auth(&self) -> bool {
+        self.subtype
             .as_deref()
-            .is_some_and(|s| s.starts_with("KERN_MEMORY_ERROR"));
-        kernel_says_io || (memory_error && !self.ktriage.is_empty())
+            .is_some_and(|s| s.contains("pointer authentication"))
+    }
+
+    /// The kernel's own triage says a page-in from the file system failed,
+    /// so the process died reading its code or a mapped file from storage.
+    /// Only explicit failure lines count: KERN_MEMORY_ERROR alone also covers
+    /// a mapped file that was truncated or whose network volume went away.
+    pub(crate) fn pagein_failure(&self) -> bool {
+        self.exc_type.as_deref() == Some("EXC_BAD_ACCESS")
+            && self.ktriage.iter().any(|l| {
+                let l = l.to_ascii_lowercase();
+                (l.contains("pagein") && (l.contains("fail") || l.contains("error")))
+                    || l.contains("page has error")
+            })
     }
 
     /// mactriage's reading of the report for the detail text. Apple's own
@@ -1211,15 +1329,41 @@ impl CrashContext {
         let mut out = Vec::new();
         if self.pagein_failure() {
             out.push(
-                "The kernel reported that it could not read part of this program's code or data \
-                 from disk (see the kernel triage evidence), so the crash is a symptom of a \
-                 storage read failure rather than a defect in the program."
+                "The kernel's triage says a page-in from the file system failed: the process \
+                 died while reading its own code or a mapped file from storage. That points at \
+                 a storage read failure (a damaged file, the disk, or its volume) more than at \
+                 a defect in the program."
                     .to_string(),
             );
         } else if self.null_pointer() {
             out.push(
-                "The faulting address is in the first memory page, which marks a NULL pointer \
-                 dereference: a defect in the code that crashed."
+                "The faulting address is 0, a NULL pointer dereference: a defect in the code that \
+                 crashed."
+                    .to_string(),
+            );
+        } else if self.near_null() {
+            out.push(
+                "The faulting address is in the first memory page, which most often means a \
+                 field was read through a NULL pointer (a defect in the code that crashed)."
+                    .to_string(),
+            );
+        }
+        if self.pointer_auth() {
+            out.push(
+                "The report flags a possible pointer authentication failure: a pointer was \
+                 corrupted or forged before it was used."
+                    .to_string(),
+            );
+        }
+        if self
+            .asi
+            .iter()
+            .any(|m| m.contains("Terminating app due to uncaught exception"))
+        {
+            out.push(
+                "The application specific information names an uncaught language exception: the \
+                 app stopped itself after an error it did not handle, and the exception name and \
+                 reason are what the vendor needs."
                     .to_string(),
             );
         }
@@ -1230,8 +1374,8 @@ impl CrashContext {
     pub(crate) fn next_step(&self, proc_name: &str) -> Option<String> {
         if self.pagein_failure() {
             return Some(format!(
-                "Treat this as a disk read problem, not a {proc_name} bug: back up, run Disk \
-                 Utility First Aid on the volume that holds {proc_name} (and on the startup \
+                "Treat this as a likely disk read problem before a {proc_name} bug: back up, run \
+                 Disk Utility First Aid on the volume that holds {proc_name} (and on the startup \
                  volume), and check this report for disk I/O or APFS errors. If {proc_name} lives \
                  on an external or network disk, check that disk and its cable first. \
                  Reinstalling {proc_name} only helps if the damaged file is the app itself."
@@ -1335,13 +1479,20 @@ impl CrashContext {
     }
 }
 
-/// First line of `s`, cut to `max` characters.
+/// Report text with every control character (tabs included) turned into a
+/// space, so an escape sequence planted in a report file cannot reach the
+/// terminal while tab-separated fields stay apart.
+fn clean(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect()
+}
+
+/// First line of `s` without control characters, cut to `max` characters.
 fn one_line(s: &str, max: usize) -> String {
-    let line = s
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("")
-        .trim();
+    let first = s.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
+    let cleaned = clean(first);
+    let line = cleaned.trim();
     if line.chars().count() > max {
         format!("{}…", line.chars().take(max).collect::<String>())
     } else {

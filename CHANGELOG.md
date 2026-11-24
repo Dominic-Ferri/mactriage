@@ -3,7 +3,7 @@
 ## 0.15.0 (2026-11-23)
 
 - Every finding now lists the official Apple documentation behind it: the page
-  title, the URL, and a short summary of what the page says. 97 of the 114
+  title, the URL, and a short summary of what the page says. 98 of the 115
   rules cite developer.apple.com, support.apple.com, Apple Platform Security,
   Apple Platform Deployment, or Apple's own man pages. The other 17 rules name
   the source they rely on instead (for example SMC shutdown-cause codes, GPU
@@ -26,16 +26,46 @@
   reinstall the app. It stays Medium. Why: a `git` crash on this Mac was a
   SIGBUS / KERN_MEMORY_ERROR caused by a failed APFS read, and the old advice
   was "update or reinstall git".
-- A fault in the first memory page is labelled a NULL pointer dereference.
-- A WindowServer or loginwindow crash is now High: it ends the login session
-  and quits every open app without a kernel panic. Repeated session crashes
-  stay High when they merge into one finding, and merged crash findings keep
-  the Apple references and the latest report's detail.
+- New rule `correlate.pagein_storage` (High): when crash reports of two or
+  more different programs show a failed page-in, one finding names them and
+  points at the shared volume or disk. The member crashes stay listed.
+  Only an explicit failure line in the kernel triage counts ("pagein … failed
+  / error", "page has error"); KERN_MEMORY_ERROR alone also covers a mapped
+  file that was truncated or whose network volume went away, so it does not.
+- A fault at address 0 is labelled a NULL pointer dereference; a fault in the
+  rest of the first page reads "most often a NULL pointer". A possible
+  pointer authentication failure is called out, and the address still parses
+  when the subtype carries the "-> 0x…" annotation. An uncaught language
+  exception named in the Application Specific Information is called out.
+- For an abort (EXC_CRASH), "crashed in" skips the system library
+  frames on top of the stack (`__pthread_kill`, `abort`, `objc_exception_throw`)
+  and names the code that called them.
+- A WindowServer or loginwindow crash is now High: it normally ends the login
+  session and quits every open app without a kernel panic. Only the copies
+  macOS ships count (checked by `procPath`), so a third-party binary with the
+  same name stays Medium. Repeated session crashes stay High when they merge
+  into one finding.
+- Merged crash findings keep the Apple references of their reports, and take
+  both the added detail and the advice from the latest report, so the two
+  describe the same crash. A crash loop of page-in failures keeps the storage
+  advice instead of "update or reinstall".
+- Termination codes are decoded only in the namespaces Apple shows them in
+  (SPRINGBOARD, RUNNINGBOARD); a SIGNAL code is the signal number.
+- Text read from report files has control characters replaced with spaces, so
+  an escape sequence planted in a report cannot reach the terminal. ASI
+  messages and kernel triage lines are capped at 8 each.
 - Kernel panic findings add the panic type (userspace watchdog, sleep or wake
   transition timeout, zone map exhausted, kernel data abort, instruction fetch
   abort, hardware watchdog, kernel trap), the panicked process, the service
   that stopped checking in with the userspace watchdog, the last started kext,
-  and the OS, kernel and iBoot versions.
+  and the OS, kernel and iBoot versions. The panic type is read from the
+  headline only, never from the backtrace or task list below it. Intel panics
+  that put a version on the line after its label, and the
+  `BSD process name corresponding to current thread` line, are read too.
+  `watchdog timeout: no checkins from watchdogd` is described as the kernel
+  watchdog getting no check-ins (a hung or starved system), not as a
+  hardware watchdog. The userspace-watchdog text no longer says the kernel was
+  fine or blames third-party agents; the panic does not establish either.
 
 ## 0.14.2 (2026-11-18)
 

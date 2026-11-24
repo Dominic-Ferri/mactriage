@@ -282,7 +282,10 @@ fn findings(report: &Report, style: &Style, verbose: u8, out: &mut String) {
                     last_step = step.clone();
                 }
             }
-            if !f.references.is_empty() {
+            if f.references.is_empty() {
+                // "Same as above" must refer to the finding right above.
+                last_refs.clear();
+            } else {
                 if f.references == last_refs {
                     out.push_str("      Apple: same documentation as above\n");
                 } else {

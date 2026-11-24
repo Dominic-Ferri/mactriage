@@ -30,9 +30,57 @@ pub fn run(
     rate_cpu_limit_reports(&mut merged);
     let mut out = crash_loops_and_stories(merged);
     panic_kext_still_loaded(&mut out, panic_kexts, loaded_kexts);
+    pagein_storage(&mut out);
     spotlight_stack(&mut out);
     post_update(&mut out, installs);
     out
+}
+
+/// Page-in failures in two or more different programs point at the storage
+/// they all read from, not at any one program: one High finding names them.
+/// The member crashes stay in the report as its evidence.
+fn pagein_storage(out: &mut Vec<Finding>) {
+    let mut procs: Vec<&str> = out
+        .iter()
+        .filter(|f| {
+            f.evidence
+                .iter()
+                .any(|e| e.source == crate::files::READING_SOURCE && e.excerpt.contains("page-in"))
+        })
+        .filter_map(|f| f.process.as_deref())
+        .collect();
+    procs.sort_unstable();
+    procs.dedup();
+    if procs.len() < 2 {
+        return;
+    }
+    let names = procs.join(", ");
+    let mut f = Finding::new(
+        "correlate.pagein_storage",
+        Severity::High,
+        "disk",
+        &format!(
+            "{} different programs crashed because reads from storage failed",
+            procs.len()
+        ),
+    );
+    f.count = procs.len() as u32;
+    f.detail = format!(
+        "The kernel's triage in crash reports of {names} says a page-in from the file system \
+         failed. One program can have a damaged file; several programs failing the same way \
+         point at the volume or the disk they read from."
+    );
+    f.next_step = Some(
+        "Back up now. Run Disk Utility First Aid on the startup volume (from macOS Recovery if it \
+         is the startup disk) and on any external volume these programs live on, and check this \
+         report for disk I/O, APFS and SSD health findings."
+            .into(),
+    );
+    f.evidence.push(Evidence {
+        source: "programs with failed page-ins".into(),
+        excerpt: names,
+    });
+    out.push(f);
 }
 
 /// A wedged Spotlight/knowledge index shows up as several findings across
@@ -301,6 +349,17 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
                 "Update or reinstall {proc_name}. If it's a background service, find its job: \
                  `launchctl list | grep -i {proc_name}`, then fix or unload its plist."
             ));
+            // A loop of page-in failures is a storage problem; reinstall
+            // advice alone would hide that.
+            if let Some(c) = crashes
+                .iter()
+                .find(|c| reading_of(c).is_some_and(|r| r.contains("page-in")))
+            {
+                f.next_step = c.next_step.clone();
+                if let Some(r) = reading_of(c) {
+                    f.detail.push_str(&format!(" {r}"));
+                }
+            }
             for c in crashes.iter().take(3) {
                 f.evidence.extend(c.evidence.iter().cloned());
             }
@@ -390,10 +449,14 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
                  Not an active crash loop, but a recurring failure worth a closer look — a flaky \
                  plugin, a bad update, or corrupted state."
             );
-            f.next_step = crashes.iter().find_map(|c| c.next_step.clone());
-            if let Some(latest) = crashes.iter().max_by_key(|c| c.timestamp) {
-                f.detail
-                    .push_str(&format!(" Latest report: {}", latest.detail));
+            // Detail and advice both come from the latest report, so they
+            // describe the same crash.
+            let latest = crashes.iter().max_by_key(|c| c.timestamp);
+            f.next_step = latest
+                .and_then(|c| c.next_step.clone())
+                .or_else(|| crashes.iter().find_map(|c| c.next_step.clone()));
+            if let Some(reading) = latest.and_then(|c| reading_of(c)) {
+                f.detail.push_str(&format!(" Latest report: {reading}"));
             }
             for c in crashes.iter().take(3) {
                 f.evidence.extend(c.evidence.iter().cloned());
@@ -406,6 +469,14 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
     }
     passthrough.extend(merged);
     passthrough
+}
+
+/// mactriage's reading of one crash report, if the parser made one.
+fn reading_of(f: &Finding) -> Option<&str> {
+    f.evidence
+        .iter()
+        .find(|e| e.source == crate::files::READING_SOURCE)
+        .map(|e| e.excerpt.as_str())
 }
 
 /// Carry the report-specific Apple references of merged members over to the

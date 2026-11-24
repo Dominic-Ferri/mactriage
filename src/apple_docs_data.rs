@@ -13,27 +13,27 @@ const D009: Doc = Doc { title: "If your Mac doesn't start up all the way", url: 
 const D010: Doc = Doc { title: "If your Mac doesn’t start up as expected", url: "https://support.apple.com/guide/mac-help/if-your-mac-doesnt-start-up-as-expected-mchlp2889/mac" };
 const D011: Doc = Doc { title: "If your Mac restarted because of a problem", url: "https://support.apple.com/en-us/102382" };
 const D012: Doc = Doc { title: "Start up your Mac in safe mode", url: "https://support.apple.com/guide/mac-help/start-up-your-mac-in-safe-mode-mh21245/mac" };
-const D013: Doc = Doc { title: "Understanding and Debugging Kernel Panics", url: "https://developer.apple.com/library/archive/technotes/tn2063/_index.html" };
-const D014: Doc = Doc { title: "If your Mac restarts and a message appears", url: "https://support.apple.com/en-us/guide/mac-help/mchlp2890/mac" };
-const D015: Doc = Doc { title: "If an app freezes or quits unexpectedly on Mac", url: "https://support.apple.com/en-us/guide/mac-help/mchlp2579/mac" };
-const D016: Doc = Doc { title: "About fans and fan noise in your Apple product", url: "https://support.apple.com/en-us/101576" };
-const D017: Doc = Doc { title: "About Spotlight indexing and search results on Apple devices", url: "https://support.apple.com/en-us/102321" };
-const D018: Doc = Doc { title: "EXC_RESOURCE", url: "https://developer.apple.com/documentation/xcode/exc_resource" };
-const D019: Doc = Doc { title: "Interpreting the JSON format of a crash report", url: "https://developer.apple.com/documentation/xcode/interpreting-the-json-format-of-a-crash-report" };
-const D020: Doc = Doc { title: "Addressing watchdog terminations", url: "https://developer.apple.com/documentation/xcode/addressing-watchdog-terminations" };
-const D021: Doc = Doc { title: "Identifying high-memory use with jetsam event reports", url: "https://developer.apple.com/documentation/xcode/identifying-high-memory-use-with-jetsam-event-reports" };
-const D022: Doc = Doc { title: "If your Mac sleeps or wakes unexpectedly", url: "https://support.apple.com/guide/mac-help/if-your-mac-sleeps-or-wakes-unexpectedly-mchlp2995/mac" };
-const D023: Doc = Doc { title: "Examining the fields in a crash report", url: "https://developer.apple.com/documentation/xcode/examining-the-fields-in-a-crash-report" };
-const D024: Doc = Doc { title: "If you can't back up or restore your Mac using Time Machine", url: "https://support.apple.com/en-us/102220" };
-const D025: Doc = Doc { title: "Back up your Mac with Time Machine", url: "https://support.apple.com/en-us/104984" };
-const D026: Doc = Doc { title: "If you can't connect your Magic Keyboard, Magic Mouse, or Magic Trackpad to your Mac", url: "https://support.apple.com/en-us/102498" };
-const D027: Doc = Doc { title: "Connect a Bluetooth device with your Mac", url: "https://support.apple.com/guide/mac-help/connect-a-wireless-accessory-blth1004/mac" };
-const D028: Doc = Doc { title: "Acquiring crash reports and diagnostic logs", url: "https://developer.apple.com/documentation/xcode/acquiring-crash-reports-and-diagnostic-logs" };
-const D029: Doc = Doc { title: "Identifying the cause of common crashes", url: "https://developer.apple.com/documentation/xcode/identifying-the-cause-of-common-crashes" };
-const D030: Doc = Doc { title: "Safely open apps on your Mac", url: "https://support.apple.com/102445" };
-const D031: Doc = Doc { title: "Gatekeeper and runtime protection in macOS", url: "https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web" };
-const D032: Doc = Doc { title: "Repair a storage device in Disk Utility on Mac", url: "https://support.apple.com/guide/disk-utility/repair-a-storage-device-dskutl1040/mac" };
-const D033: Doc = Doc { title: "How to repair a Mac storage device with Disk Utility", url: "https://support.apple.com/en-us/102611" };
+const D013: Doc = Doc { title: "Repair a storage device in Disk Utility on Mac", url: "https://support.apple.com/guide/disk-utility/repair-a-storage-device-dskutl1040/mac" };
+const D014: Doc = Doc { title: "How to repair a Mac storage device with Disk Utility", url: "https://support.apple.com/en-us/102611" };
+const D015: Doc = Doc { title: "Understanding and Debugging Kernel Panics", url: "https://developer.apple.com/library/archive/technotes/tn2063/_index.html" };
+const D016: Doc = Doc { title: "If your Mac restarts and a message appears", url: "https://support.apple.com/en-us/guide/mac-help/mchlp2890/mac" };
+const D017: Doc = Doc { title: "If an app freezes or quits unexpectedly on Mac", url: "https://support.apple.com/en-us/guide/mac-help/mchlp2579/mac" };
+const D018: Doc = Doc { title: "About fans and fan noise in your Apple product", url: "https://support.apple.com/en-us/101576" };
+const D019: Doc = Doc { title: "About Spotlight indexing and search results on Apple devices", url: "https://support.apple.com/en-us/102321" };
+const D020: Doc = Doc { title: "EXC_RESOURCE", url: "https://developer.apple.com/documentation/xcode/exc_resource" };
+const D021: Doc = Doc { title: "Interpreting the JSON format of a crash report", url: "https://developer.apple.com/documentation/xcode/interpreting-the-json-format-of-a-crash-report" };
+const D022: Doc = Doc { title: "Addressing watchdog terminations", url: "https://developer.apple.com/documentation/xcode/addressing-watchdog-terminations" };
+const D023: Doc = Doc { title: "Identifying high-memory use with jetsam event reports", url: "https://developer.apple.com/documentation/xcode/identifying-high-memory-use-with-jetsam-event-reports" };
+const D024: Doc = Doc { title: "If your Mac sleeps or wakes unexpectedly", url: "https://support.apple.com/guide/mac-help/if-your-mac-sleeps-or-wakes-unexpectedly-mchlp2995/mac" };
+const D025: Doc = Doc { title: "Examining the fields in a crash report", url: "https://developer.apple.com/documentation/xcode/examining-the-fields-in-a-crash-report" };
+const D026: Doc = Doc { title: "If you can't back up or restore your Mac using Time Machine", url: "https://support.apple.com/en-us/102220" };
+const D027: Doc = Doc { title: "Back up your Mac with Time Machine", url: "https://support.apple.com/en-us/104984" };
+const D028: Doc = Doc { title: "If you can't connect your Magic Keyboard, Magic Mouse, or Magic Trackpad to your Mac", url: "https://support.apple.com/en-us/102498" };
+const D029: Doc = Doc { title: "Connect a Bluetooth device with your Mac", url: "https://support.apple.com/guide/mac-help/connect-a-wireless-accessory-blth1004/mac" };
+const D030: Doc = Doc { title: "Acquiring crash reports and diagnostic logs", url: "https://developer.apple.com/documentation/xcode/acquiring-crash-reports-and-diagnostic-logs" };
+const D031: Doc = Doc { title: "Identifying the cause of common crashes", url: "https://developer.apple.com/documentation/xcode/identifying-the-cause-of-common-crashes" };
+const D032: Doc = Doc { title: "Safely open apps on your Mac", url: "https://support.apple.com/102445" };
+const D033: Doc = Doc { title: "Gatekeeper and runtime protection in macOS", url: "https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web" };
 const D034: Doc = Doc { title: "Deprecated Kernel Extensions and System Extension Alternatives", url: "https://developer.apple.com/support/kernel-extensions/" };
 const D035: Doc = Doc { title: "If your Mac keeps asking for your keychain password", url: "https://support.apple.com/guide/keychain-access/mac-keychain-password-kyca1242/mac" };
 const D036: Doc = Doc { title: "Change DNS settings on Mac", url: "https://support.apple.com/en-us/guide/mac-help/mh14127/mac" };
@@ -133,35 +133,39 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
             Cite { doc: &D011, says: "Restart loops are documented in the unexpected-restart article; steps are software update, safe mode, disconnect devices, Apple Diagnostics, reinstall macOS." },
             Cite { doc: &D012, says: "Safe mode isolates startup-loaded software as a cause." },
         ],
+        "correlate.pagein_storage" => &[
+            Cite { doc: &D013, says: "First Aid in Disk Utility is Apple's tool for formatting/directory (APFS) errors." },
+            Cite { doc: &D014, says: "Disk-structure errors cause odd behavior and can block startup; run First Aid (from Recovery for the startup disk)." },
+        ],
         "correlate.panic_kext" => &[
-            Cite { doc: &D013, says: "Archived TN2063: a panic log lists kernel modules found in the backtrace and their dependencies (Intel-era format)." },
-            Cite { doc: &D014, says: "Apple: when a panic names faulty software, remove it." },
+            Cite { doc: &D015, says: "Archived TN2063: a panic log lists kernel modules found in the backtrace and their dependencies (Intel-era format)." },
+            Cite { doc: &D016, says: "Apple: when a panic names faulty software, remove it." },
         ],
         "correlate.post_update" => &[
-            Cite { doc: &D015, says: "Problems right after an update are commonly incompatible plug-ins or enhancements." },
-            Cite { doc: &D014, says: "Apple's kernel panic article says the same: after a macOS or app update, plug-ins and other software that worked before may no longer be compatible." },
+            Cite { doc: &D017, says: "Problems right after an update are commonly incompatible plug-ins or enhancements." },
+            Cite { doc: &D016, says: "Apple's kernel panic article says the same: after a macOS or app update, plug-ins and other software that worked before may no longer be compatible." },
         ],
         "correlate.spotlight_stack" => &[
-            Cite { doc: &D016, says: "Spotlight indexing legitimately drives CPU and fan use, e.g. after data migration." },
-            Cite { doc: &D017, says: "Apple lists the conditions under which Spotlight indexing finishes faster (for example a Mac that is on power and not in heavy use), because indexing is real work for the Mac." },
+            Cite { doc: &D018, says: "Spotlight indexing legitimately drives CPU and fan use, e.g. after data migration." },
+            Cite { doc: &D019, says: "Apple lists the conditions under which Spotlight indexing finishes faster (for example a Mac that is on power and not in heavy use), because indexing is real work for the Mac." },
         ],
         "file.cpu_resource" => &[
-            Cite { doc: &D018, says: "EXC_RESOURCE subtype CPU / CPU_FATAL: a thread used too much CPU in a short interval." },
+            Cite { doc: &D020, says: "EXC_RESOURCE subtype CPU / CPU_FATAL: a thread used too much CPU in a short interval." },
         ],
         "file.crash" => &[
-            Cite { doc: &D019, says: "An .ips file with bug_type 309 is a crash report; the file holds two JSON objects (metadata plus report body)." },
-            Cite { doc: &D015, says: "User-facing fix list for an app that freezes or quits: force quit, reopen, update, check compatibility, remove plugins." },
+            Cite { doc: &D021, says: "An .ips file with bug_type 309 is a crash report; the file holds two JSON objects (metadata plus report body)." },
+            Cite { doc: &D017, says: "User-facing fix list for an app that freezes or quits: force quit, reopen, update, check compatibility, remove plugins." },
         ],
         "file.hang" => &[
-            Cite { doc: &D020, says: "Apple documents app-responsiveness watchdog terminations (0x8badf00d); main-thread blocking is the typical cause." },
-            Cite { doc: &D015, says: "End-user step for a hung app: Force Quit, then reopen, update, or remove incompatible plugins." },
+            Cite { doc: &D022, says: "Apple documents app-responsiveness watchdog terminations (0x8badf00d); main-thread blocking is the typical cause." },
+            Cite { doc: &D017, says: "End-user step for a hung app: Force Quit, then reopen, update, or remove incompatible plugins." },
         ],
         "file.jetsam" => &[
-            Cite { doc: &D021, says: "Jetsam reports are JSON snapshots of whole-system memory use with no thread backtraces; the reason key names why a process was killed." },
+            Cite { doc: &D023, says: "Jetsam reports are JSON snapshots of whole-system memory use with no thread backtraces; the reason key names why a process was killed." },
         ],
         "file.kernel_panic" => &[
-            Cite { doc: &D014, says: "Apple says a kernel panic is most often faulty software, but damaged or incompatible hardware and attached devices can also cause one." },
-            Cite { doc: &D013, says: "Archived technote: a panic is an unrecoverable kernel-detected error, usually an unhandled processor exception in kernel code." },
+            Cite { doc: &D016, says: "Apple says a kernel panic is most often faulty software, but damaged or incompatible hardware and attached devices can also cause one." },
+            Cite { doc: &D015, says: "Archived technote: a panic is an unrecoverable kernel-detected error, usually an unhandled processor exception in kernel code." },
             Cite { doc: &D011, says: "Apple points to installed software and connected peripherals first; isolate by updating, safe mode, then disconnecting devices." },
         ],
         "file.reset_count" => &[
@@ -172,40 +176,40 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
             Cite { doc: &D011, says: "Closest official guidance: general unexpected restart/shutdown article; Apple does not document shutdown-stall reports specifically." },
         ],
         "file.sleep_wake_failure" => &[
-            Cite { doc: &D022, says: "Apple suggests checking sleep settings, network wake, Sharing services, Activity Monitor CPU, then software update, safe mode and SMC reset." },
+            Cite { doc: &D024, says: "Apple suggests checking sleep settings, network wake, Sharing services, Activity Monitor CPU, then software update, safe mode and SMC reset." },
         ],
         "file.unknown_report" => &[
-            Cite { doc: &D019, says: "bug_type 309 is a crash report; other numeric types exist (288 = stackshot) and Apple does not publish a full table in this article." },
+            Cite { doc: &D021, says: "bug_type 309 is a crash report; other numeric types exist (288 = stackshot) and Apple does not publish a full table in this article." },
         ],
         "file.user_fault" => &[
-            Cite { doc: &D023, says: "A report whose Exception Note says NON-FATAL CONDITION is a diagnostic report for a process that kept running, not a crash." },
-            Cite { doc: &D018, says: "Same semantics for EXC_RESOURCE reports: report generated without terminating the process." },
+            Cite { doc: &D025, says: "A report whose Exception Note says NON-FATAL CONDITION is a diagnostic report for a process that kept running, not a crash." },
+            Cite { doc: &D020, says: "Same semantics for EXC_RESOURCE reports: report generated without terminating the process." },
         ],
         "file.wakeups" => &[
-            Cite { doc: &D018, says: "EXC_RESOURCE subtype WAKEUPS: excessive thread wakeups; crash reports typically show several background threads with similar backtraces." },
+            Cite { doc: &D020, says: "EXC_RESOURCE subtype WAKEUPS: excessive thread wakeups; crash reports typically show several background threads with similar backtraces." },
         ],
         "log.backupd" => &[
-            Cite { doc: &D024, says: "Apple's Time Machine troubleshooting: check space, direct connection, network, VPN software, repair backup disk, firmware, erase and restart." },
-            Cite { doc: &D025, says: "Backup disk should be at least twice the Mac's capacity." },
+            Cite { doc: &D026, says: "Apple's Time Machine troubleshooting: check space, direct connection, network, VPN software, repair backup disk, firmware, erase and restart." },
+            Cite { doc: &D027, says: "Backup disk should be at least twice the Mac's capacity." },
         ],
         "log.bluetooth" => &[
-            Cite { doc: &D026, says: "Dropping Bluetooth connections are often caused by wireless interference." },
-            Cite { doc: &D027, says: "Pairing steps for generic Bluetooth devices from System Settings > Bluetooth." },
+            Cite { doc: &D028, says: "Dropping Bluetooth connections are often caused by wireless interference." },
+            Cite { doc: &D029, says: "Pairing steps for generic Bluetooth devices from System Settings > Bluetooth." },
         ],
         "log.crash_reported" => &[
-            Cite { doc: &D028, says: "Crashes produce reports; non-crash problems must be investigated in the console (unified) log." },
-            Cite { doc: &D029, says: "Apple recommends reading Exception Information and backtraces to classify a crash." },
+            Cite { doc: &D030, says: "Crashes produce reports; non-crash problems must be investigated in the console (unified) log." },
+            Cite { doc: &D031, says: "Apple recommends reading Exception Information and backtraces to classify a crash." },
         ],
         "log.gatekeeper" => &[
-            Cite { doc: &D030, says: "Gatekeeper prompts and block messages on app open are expected user-visible events." },
-            Cite { doc: &D031, says: "Gatekeeper policy can be tightened to App Store only, or loosened by users unless management restricts it." },
+            Cite { doc: &D032, says: "Gatekeeper prompts and block messages on app open are expected user-visible events." },
+            Cite { doc: &D033, says: "Gatekeeper policy can be tightened to App Store only, or loosened by users unless management restricts it." },
         ],
         "log.io_errors" => &[
-            Cite { doc: &D032, says: "First Aid in Disk Utility is Apple's tool for formatting/directory (APFS) errors." },
-            Cite { doc: &D033, says: "Disk-structure errors cause odd behavior and can block startup; run First Aid (from Recovery for the startup disk)." },
+            Cite { doc: &D013, says: "First Aid in Disk Utility is Apple's tool for formatting/directory (APFS) errors." },
+            Cite { doc: &D014, says: "Disk-structure errors cause odd behavior and can block startup; run First Aid (from Recovery for the startup disk)." },
         ],
         "log.jetsam" => &[
-            Cite { doc: &D021, says: "The jetsam report processes array holds one entry per process; only the killed one carries a reason." },
+            Cite { doc: &D023, says: "The jetsam report processes array holds one entry per process; only the killed one carries a reason." },
         ],
         "log.kext" => &[
             Cite { doc: &D034, says: "Since macOS Big Sur, kexts using unsupported KPIs fail to load; vendors should move to system extensions." },
@@ -220,17 +224,17 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
             Cite { doc: &D038, says: "Restart or renew the DHCP lease when connected to Wi-Fi but unable to resolve or reach sites." },
         ],
         "log.sleep_wake" => &[
-            Cite { doc: &D022, says: "Official troubleshooting order for unexpected sleep/wake behaviour." },
+            Cite { doc: &D024, says: "Official troubleshooting order for unexpected sleep/wake behaviour." },
         ],
         "log.software_update" => &[
             Cite { doc: &D039, says: "Covers the exact error classes: downloading, preparing, installing, damaged, could not be verified, failed to personalize." },
             Cite { doc: &D040, says: "Software Update is the normal path; back up first." },
         ],
         "log.spotlight" => &[
-            Cite { doc: &D017, says: "Apple's rebuild method: add the disk/folder to Spotlight Search Privacy, then remove it to reindex." },
+            Cite { doc: &D019, says: "Apple's rebuild method: add the disk/folder to Spotlight Search Privacy, then remove it to reindex." },
         ],
         "log.thermal" => &[
-            Cite { doc: &D016, says: "Unexpected heavy fan use with a light workload and clear vents is abnormal; on Apple silicon, close and reopen the lid or restart (Intel: reset the SMC)." },
+            Cite { doc: &D018, says: "Unexpected heavy fan use with a light workload and clear vents is abnormal; on Apple silicon, close and reopen the lid or restart (Intel: reset the SMC)." },
             Cite { doc: &D041, says: "If a Mac laptop runs warm while idle, use Activity Monitor to find runaway CPU processes before suspecting hardware." },
         ],
         "log.usb_tb" => &[
@@ -250,8 +254,8 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
             Cite { doc: &D047, says: "The application firewall is configured in Network settings and blocks unwanted incoming connections." },
         ],
         "posture.gatekeeper_off" => &[
-            Cite { doc: &D031, says: "Gatekeeper can be disabled entirely, removing the signature and notarization check on launched apps." },
-            Cite { doc: &D030, says: "Without Gatekeeper checks, unsigned or unnotarized software runs freely." },
+            Cite { doc: &D033, says: "Gatekeeper can be disabled entirely, removing the signature and notarization check on launched apps." },
+            Cite { doc: &D032, says: "Without Gatekeeper checks, unsigned or unnotarized software runs freely." },
         ],
         "posture.mdm_profiles" => &[
             Cite { doc: &D048, says: "An enrolled Mac is remotely manageable, so installed profiles shape its security posture." },
@@ -392,13 +396,13 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
             Cite { doc: &D078, says: "Charger connected but draining: try another outlet, cable (data-only cables don't charge), and adapter." },
         ],
         "snap.darkwake_storm" => &[
-            Cite { doc: &D022, says: "Network access and sharing services wake the Mac; set Wake for network access to Never and turn off unused Sharing." },
+            Cite { doc: &D024, says: "Network access and sharing services wake the Mac; set Wake for network access to Never and turn off unused Sharing." },
             Cite { doc: &D079, says: "A Mac that shares resources can be set to wake from sleep whenever other users access them (Wake for network access), which shows up as repeated wakes." },
             Cite { doc: &D080, says: "pmset powernap 0 disables Power Nap." },
         ],
         "snap.disk_full" => &[
             Cite { doc: &D081, says: "Apple's guide for a nearly full startup disk: optimize storage, move/delete files, empty Trash, etc." },
-            Cite { doc: &D024, says: "A full startup disk also breaks Time Machine." },
+            Cite { doc: &D026, says: "A full startup disk also breaks Time Machine." },
             Cite { doc: &D039, says: "Updates fail with insufficient storage; free up space first." },
         ],
         "snap.dns_failing" => &[
@@ -430,12 +434,12 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
         ],
         "snap.power_assertions" => &[
             Cite { doc: &D088, says: "Activity Monitor Energy tab column shows which apps hold sleep assertions." },
-            Cite { doc: &D022, says: "Background processes block sleep; check Activity Monitor." },
+            Cite { doc: &D024, says: "Background processes block sleep; check Activity Monitor." },
             Cite { doc: &D080, says: "pmset -g assertions lists active power assertions." },
         ],
         "snap.smart" => &[
             Cite { doc: &D073, says: "Disk Utility's Info pane shows the drive's S.M.A.R.T. status (Verified / Failing)." },
-            Cite { doc: &D032, says: "First Aid does not replace SMART health; a drive reported as failing cannot be repaired." },
+            Cite { doc: &D013, says: "First Aid does not replace SMART health; a drive reported as failing cannot be repaired." },
         ],
         "snap.ssd_wear" => &[
             Cite { doc: &D073, says: "Only general S.M.A.R.T. status is documented by Apple; wear percentage is not." },
@@ -445,13 +449,13 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
         ],
         "snap.thermal_throttle" => &[
             Cite { doc: &D041, says: "Apple's supported ambient temperature for a Mac laptop is 10-35 °C (50-95 °F)." },
-            Cite { doc: &D016, says: "Hot ambient air makes fans start sooner and run faster." },
+            Cite { doc: &D018, says: "Hot ambient air makes fans start sooner and run faster." },
             Cite { doc: &D089, says: "Low Power Mode lowers energy use and, on recent models, fan noise, and can explain reduced performance." },
         ],
         "snap.tm_stale" => &[
-            Cite { doc: &D025, says: "Healthy Time Machine cadence is hourly; a long gap is stale." },
+            Cite { doc: &D027, says: "Healthy Time Machine cadence is hourly; a long gap is stale." },
             Cite { doc: &D072, says: "Local snapshots do not count as completed backups." },
-            Cite { doc: &D024, says: "If backups stop, check the disk connection first." },
+            Cite { doc: &D026, says: "If backups stop, check the disk connection first." },
         ],
         "snap.top_mem" => &[
             Cite { doc: &D086, says: "Activity Monitor App Memory; Wired is memory the system needs; Compressed is squeezed memory." },
@@ -471,7 +475,7 @@ pub fn rule_cites(rule_id: &str) -> &'static [Cite] {
 }
 
 #[cfg(test)]
-pub const CITED_RULES: &[&str] = &["audit.btm_orphan", "audit.kext_inventory", "audit.launch_broken", "audit.launch_inventory", "boot.slow_boot", "correlate.crash_loop", "correlate.panic_kext", "correlate.post_update", "correlate.spotlight_stack", "file.cpu_resource", "file.crash", "file.hang", "file.jetsam", "file.kernel_panic", "file.reset_count", "file.shutdown_stall", "file.sleep_wake_failure", "file.unknown_report", "file.user_fault", "file.wakeups", "log.backupd", "log.bluetooth", "log.crash_reported", "log.gatekeeper", "log.io_errors", "log.jetsam", "log.kext", "log.keychain", "log.mdnsresponder", "log.sleep_wake", "log.software_update", "log.spotlight", "log.thermal", "log.usb_tb", "log.wifi", "posture.filevault_off", "posture.firewall_off", "posture.gatekeeper_off", "posture.mdm_profiles", "posture.sip_disabled", "posture.ssv_disabled", "posture.xprotect_stale", "sec.admin_accounts", "sec.auto_updates_off", "sec.autologin_on", "sec.boot_args", "sec.bootstrap_token", "sec.custom_trust", "sec.dns_public", "sec.firewall_allow_signed", "sec.firewall_exception_risky", "sec.firewall_exception_stale", "sec.firewall_stealth_off", "sec.guest_enabled", "sec.internet_sharing", "sec.listener_apple", "sec.listener_exposed", "sec.managed_extension_inactive", "sec.mdm_not_approved", "sec.privileged_launch_writable", "sec.profile_inventory", "sec.proxy_set", "sec.remote_access", "sec.root_enabled", "sec.screen_lock_weak", "sec.securetoken_none", "sec.ssh_weak_auth", "sec.traffic_extensions", "sec.uid0_extra", "sec.update_deferred", "sec.update_scan_stale", "sec.updates_pending", "sec.wifi_open", "sec.wifi_unknown", "sec.wifi_weak", "snap.apfs_snapshots", "snap.battery_health", "snap.charger", "snap.darkwake_storm", "snap.disk_full", "snap.dns_failing", "snap.gateway_down", "snap.input_controller", "snap.input_devices", "snap.load", "snap.memory_pressure", "snap.net_offline", "snap.power_assertions", "snap.smart", "snap.ssd_wear", "snap.swap_heavy", "snap.thermal_throttle", "snap.tm_stale", "snap.top_mem", "snap.top_procs", "snap.wifi_quality", "snap.windowserver"];
+pub const CITED_RULES: &[&str] = &["audit.btm_orphan", "audit.kext_inventory", "audit.launch_broken", "audit.launch_inventory", "boot.slow_boot", "correlate.crash_loop", "correlate.pagein_storage", "correlate.panic_kext", "correlate.post_update", "correlate.spotlight_stack", "file.cpu_resource", "file.crash", "file.hang", "file.jetsam", "file.kernel_panic", "file.reset_count", "file.shutdown_stall", "file.sleep_wake_failure", "file.unknown_report", "file.user_fault", "file.wakeups", "log.backupd", "log.bluetooth", "log.crash_reported", "log.gatekeeper", "log.io_errors", "log.jetsam", "log.kext", "log.keychain", "log.mdnsresponder", "log.sleep_wake", "log.software_update", "log.spotlight", "log.thermal", "log.usb_tb", "log.wifi", "posture.filevault_off", "posture.firewall_off", "posture.gatekeeper_off", "posture.mdm_profiles", "posture.sip_disabled", "posture.ssv_disabled", "posture.xprotect_stale", "sec.admin_accounts", "sec.auto_updates_off", "sec.autologin_on", "sec.boot_args", "sec.bootstrap_token", "sec.custom_trust", "sec.dns_public", "sec.firewall_allow_signed", "sec.firewall_exception_risky", "sec.firewall_exception_stale", "sec.firewall_stealth_off", "sec.guest_enabled", "sec.internet_sharing", "sec.listener_apple", "sec.listener_exposed", "sec.managed_extension_inactive", "sec.mdm_not_approved", "sec.privileged_launch_writable", "sec.profile_inventory", "sec.proxy_set", "sec.remote_access", "sec.root_enabled", "sec.screen_lock_weak", "sec.securetoken_none", "sec.ssh_weak_auth", "sec.traffic_extensions", "sec.uid0_extra", "sec.update_deferred", "sec.update_scan_stale", "sec.updates_pending", "sec.wifi_open", "sec.wifi_unknown", "sec.wifi_weak", "snap.apfs_snapshots", "snap.battery_health", "snap.charger", "snap.darkwake_storm", "snap.disk_full", "snap.dns_failing", "snap.gateway_down", "snap.input_controller", "snap.input_devices", "snap.load", "snap.memory_pressure", "snap.net_offline", "snap.power_assertions", "snap.smart", "snap.ssd_wear", "snap.swap_heavy", "snap.thermal_throttle", "snap.tm_stale", "snap.top_mem", "snap.top_procs", "snap.wifi_quality", "snap.windowserver"];
 
 /// Rules with no Apple documentation, and what mactriage relies on instead.
 pub const NO_APPLE_DOC: &[(&str, &str)] = &[
@@ -504,7 +508,7 @@ pub fn exception_type(key: &str) -> Option<&'static Decoded> {
         "EXC_BREAKPOINT" => Some(&Decoded { next_step: None, cite: Cite { doc: &D092, says: "On Apple silicon a trace trap appears as EXC_BREAKPOINT (SIGTRAP). The Swift runtime and libraries such as Dispatch trap on purpose when they hit an unrecoverable error, and log the reason in the report." } }),
         "EXC_CRASH" => Some(&Decoded { next_step: None, cite: Cite { doc: &D093, says: "The process crashed; Apple says the accompanying signal (SIGABRT, SIGKILL, SIGQUIT, SIGSYS or SIGTERM) tells you which kind of crash it was." } }),
         "EXC_GUARD" => Some(&Decoded { next_step: None, cite: Cite { doc: &D094, says: "The process broke a guarded-resource rule, most often by closing or writing to a file descriptor the system had guarded (for example the SQLite file behind a database)." } }),
-        "EXC_RESOURCE" => Some(&Decoded { next_step: None, cite: Cite { doc: &D018, says: "The system stopped the process for going over a resource limit (CPU, memory, disk writes or wakeups). With NON-FATAL CONDITION in the Exception Note the report was taken without terminating the process." } }),
+        "EXC_RESOURCE" => Some(&Decoded { next_step: None, cite: Cite { doc: &D020, says: "The system stopped the process for going over a resource limit (CPU, memory, disk writes or wakeups). With NON-FATAL CONDITION in the Exception Note the report was taken without terminating the process." } }),
         _ => None,
     }
 }
@@ -540,22 +544,21 @@ pub fn kern_subtype(key: &str) -> Option<&'static Decoded> {
 /// Apple's meaning of a termination reason: a well-known code first, then the namespace.
 pub fn termination(namespace: &str, code: u64) -> Option<&'static Decoded> {
     match (namespace, code) {
-        (ns, 0x2182bad2) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad2: the system killed the app because a background task did not finish in time." } }),
-        (ns, 0x2182bad3) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad3: the system killed the app because a background URL session did not finish in time." } }),
-        (ns, 0x2182bad4) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad4: the system killed the app because a background fetch did not finish in time." } }),
-        (ns, 0x8badf00d) if ns != "SIGNAL" => Some(&Decoded { next_step: Some("The app was killed for not responding, not for a coding fault in the crash itself. If it recurs, note what the app was doing (opening a large file, a network share, a slow disk); check this report for disk, network and memory findings; update the app."), cite: Cite { doc: &D097, says: "0x8badf00d (\"ate bad food\"): the system watchdog killed the app because it stopped responding, usually because its main thread was blocked for a long time." } }),
-        (ns, 0xbaadca11) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xbaadca11: the system killed the app because it did not report a CallKit call after a PushKit notification." } }),
-        (ns, 0xbad22222) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xbad22222: the system killed a VoIP app because it resumed too often." } }),
-        (ns, 0xbaddd15c) if ns != "SIGNAL" => Some(&Decoded { next_step: Some("Free disk space: macOS killed the app to purge caches because storage was low."), cite: Cite { doc: &D097, says: "0xbaddd15c: the system killed the app to delete caches and reclaim disk space." } }),
-        (ns, 0xc00010ff) if ns != "SIGNAL" => Some(&Decoded { next_step: Some("Check this report's thermal findings and the Mac's ventilation; if the Mac is not hot, update the app."), cite: Cite { doc: &D097, says: "0xc00010ff (\"cool off\"): the system killed the app because of a thermal event, which can be the device or the environment it ran in." } }),
-        (ns, 0xc51bad01) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad01: watchOS killed the app for using too much CPU in a background task." } }),
-        (ns, 0xc51bad02) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad02: watchOS killed the app because a background task did not finish in its allotted time." } }),
-        (ns, 0xc51bad03) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad03: watchOS killed the app because a background task did not finish in time while the whole system was busy." } }),
-        (ns, 0xd00d2bad) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xd00d2bad: the system killed the app for excessive use of key system resources." } }),
-        (ns, 0xdead10cc) if ns != "SIGNAL" => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xdead10cc (\"dead lock\"): the system killed the app because it held a file lock or SQLite database lock while suspended." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0x2182bad2) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad2: the system killed the app because a background task did not finish in time." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0x2182bad3) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad3: the system killed the app because a background URL session did not finish in time." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0x2182bad4) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0x2182bad4: the system killed the app because a background fetch did not finish in time." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0x8badf00d) => Some(&Decoded { next_step: Some("The app was killed for not responding, not for a coding fault in the crash itself. If it recurs, note what the app was doing (opening a large file, a network share, a slow disk); check this report for disk, network and memory findings; update the app."), cite: Cite { doc: &D097, says: "0x8badf00d (\"ate bad food\"): the system watchdog killed the app because it stopped responding, usually because its main thread was blocked for a long time." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xbaadca11) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xbaadca11: the system killed the app because it did not report a CallKit call after a PushKit notification." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xbad22222) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xbad22222: the system killed a VoIP app because it resumed too often." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xbaddd15c) => Some(&Decoded { next_step: Some("Free disk space: macOS killed the app to purge caches because storage was low."), cite: Cite { doc: &D097, says: "0xbaddd15c: the system killed the app to delete caches and reclaim disk space." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xc00010ff) => Some(&Decoded { next_step: Some("Check this report's thermal findings and the Mac's ventilation; if the Mac is not hot, update the app."), cite: Cite { doc: &D097, says: "0xc00010ff (\"cool off\"): the system killed the app because of a thermal event, which can be the device or the environment it ran in." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xc51bad01) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad01: watchOS killed the app for using too much CPU in a background task." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xc51bad02) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad02: watchOS killed the app because a background task did not finish in its allotted time." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xc51bad03) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xc51bad03: watchOS killed the app because a background task did not finish in time while the whole system was busy." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xd00d2bad) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xd00d2bad: the system killed the app for excessive use of key system resources." } }),
+        ("SPRINGBOARD" | "RUNNINGBOARD", 0xdead10cc) => Some(&Decoded { next_step: None, cite: Cite { doc: &D097, says: "0xdead10cc (\"dead lock\"): the system killed the app because it held a file lock or SQLite database lock while suspended." } }),
         ("RUNNINGBOARD", _) => Some(&Decoded { next_step: Some("The system ended the process for breaking a lifecycle rule; update the app, and check for memory pressure or thermal findings in the same window."), cite: Cite { doc: &D097, says: "RunningBoard manages process lifetimes; a kill under this namespace means the system ended the process for breaking a lifecycle rule, and the code identifies the reason." } }),
-        ("SPRINGBOARD", _) => Some(&Decoded { next_step: None, cite: Cite { doc: &D020, says: "Apple's watchdog examples report the kill under namespace SPRINGBOARD; the code identifies the reason." } }),
-        ("namespace(field)", _) => Some(&Decoded { next_step: None, cite: Cite { doc: &D019, says: "JSON field termination.namespace." } }),
+        ("SPRINGBOARD", _) => Some(&Decoded { next_step: None, cite: Cite { doc: &D022, says: "Apple's watchdog examples report the kill under namespace SPRINGBOARD; the code identifies the reason." } }),
         _ => None,
     }
 }
@@ -563,9 +566,9 @@ pub fn termination(namespace: &str, code: u64) -> Option<&'static Decoded> {
 /// Apple's description of one crash-report field mactriage quotes as evidence.
 pub fn crash_field(field: &str) -> Option<Reference> {
     match field {
-        "asi" => Some(Cite { doc: &D019, says: "Application Specific Information: messages a framework or the process logged just before it exited, often the actual error text." }.reference()),
-        "VM Region Info" => Some(Cite { doc: &D023, says: "For memory-access crashes, the VM Region Info shows where the faulting address sits relative to the process's memory regions." }.reference()),
-        "namespace" => Some(Cite { doc: &D019, says: "The termination namespace is the category the system uses for why it ended the process; the code within it identifies the reason, or is the BSD signal number for namespace SIGNAL." }.reference()),
+        "asi" => Some(Cite { doc: &D021, says: "Application Specific Information: messages a framework or the process logged just before it exited, often the actual error text." }.reference()),
+        "VM Region Info" => Some(Cite { doc: &D025, says: "For memory-access crashes, the VM Region Info shows where the faulting address sits relative to the process's memory regions." }.reference()),
+        "namespace" => Some(Cite { doc: &D021, says: "The termination namespace is the category the system uses for why it ended the process; the code within it identifies the reason, or is the BSD signal number for namespace SIGNAL." }.reference()),
         _ => None,
     }
 }

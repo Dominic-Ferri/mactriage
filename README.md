@@ -132,7 +132,7 @@ Each finding lists the official Apple pages that explain it: the developer docum
 
 The terminal report prints these entries under each finding. The HTML report and the dashboard show them in an "Apple documentation" section, and JSON has them in `references`. For 17 rules Apple publishes nothing relevant, for example SMC shutdown-cause codes, GPU restart reports, Jamf, and `/etc/hosts`. `mactriage rules` names the source that each of these rules relies on instead.
 
-Some interpretations are mactriage's own, not Apple's: the panic type, "storage read failure" for a crash whose kernel triage reports a failed page-in, and "NULL pointer dereference" for a fault in the first memory page. The detail text gives these interpretations, and the references give Apple's text.
+Some interpretations are mactriage's own, not Apple's: the panic type, "storage read failure" for a crash whose kernel triage reports a failed page-in, "NULL pointer dereference" for a fault at address 0 (and "most often a NULL pointer" for the rest of the first page), and the session-crash label for the WindowServer and loginwindow that macOS ships. The detail text gives these interpretations, and the references give Apple's text.
 
 ### When a scan is incomplete
 
@@ -384,7 +384,7 @@ Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads 
 <details>
 <summary><b>Rule list</b></summary>
 
-There are 114 rules. The table splits the 40 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, what it detects, and its Apple documentation (or why there is none).
+There are 115 rules. The table splits the 40 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, what it detects, and its Apple documentation (or why there is none).
 
 | Group | Count | Rule IDs |
 |---|---|---|
@@ -397,7 +397,7 @@ There are 114 rules. The table splits the 40 security rules into three rows. `ma
 | Security: system and accounts | 13 | `sec.auto_updates_off`, `sec.update_deferred`, `sec.screen_lock_weak`, `sec.autologin_on`, `sec.guest_enabled`, `sec.admin_accounts`, `sec.securetoken_none`, `sec.updates_pending`, `sec.update_scan_stale`, `sec.boot_args`, `sec.privileged_launch_writable`, `sec.uid0_extra`, `sec.root_enabled` |
 | Security: MDM and trust | 10 | `sec.mdm_not_approved`, `sec.bootstrap_token`, `sec.jamf_broken`, `sec.jamf_unreachable`, `sec.profile_inventory`, `sec.managed_prefs`, `sec.custom_trust`, `sec.mdm_mismatch`, `sec.managed_extension_inactive`, `sec.jamf_checkin_stale` |
 | Boot | 1 | `boot.slow_boot` |
-| Correlation | 5 | `correlate.crash_loop`, `correlate.story`, `correlate.panic_kext`, `correlate.post_update`, `correlate.spotlight_stack` |
+| Correlation | 6 | `correlate.crash_loop`, `correlate.story`, `correlate.panic_kext`, `correlate.post_update`, `correlate.spotlight_stack`, `correlate.pagein_storage` |
 
 </details>
 

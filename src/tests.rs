@@ -2932,7 +2932,7 @@ fn crash_null_pointer_and_session_crash() {
     );
     let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
     assert_eq!(c.severity, Severity::High);
-    assert!(c.summary.contains("login session ended"));
+    assert!(c.summary.contains("normally ends the login session"));
     assert!(
         c.detail.contains("NULL pointer dereference"),
         "{}",
@@ -2961,7 +2961,7 @@ fn crash_watchdog_termination_is_decoded() {
     let body = serde_json::json!({
         "procName": "app",
         "exception": {"type": "EXC_CRASH", "signal": "SIGKILL"},
-        "termination": {"namespace": "FRONTBOARD", "code": 0x8badf00d_u64}
+        "termination": {"namespace": "SPRINGBOARD", "code": 0x8badf00d_u64}
     });
     let f = scan_one(
         "mactriage-test-8badf00d",
@@ -3065,5 +3065,179 @@ fn repeated_session_crash_stays_high_and_keeps_apple_references() {
     assert_eq!(f.count, 2);
     assert_eq!(f.severity, Severity::High);
     assert_eq!(f.references.len(), 1);
-    assert!(f.detail.contains("Latest report"));
+}
+
+#[test]
+fn review_fixes_for_crash_decoding() {
+    use crate::files::CrashContext;
+    let ctx = |v: serde_json::Value| CrashContext::from_report(&v);
+
+    // KERN_MEMORY_ERROR with a non-storage triage line is not a disk problem.
+    let c = ctx(serde_json::json!({
+        "exception": {"type": "EXC_BAD_ACCESS", "subtype": "KERN_MEMORY_ERROR at 0x100000000"},
+        "ktriageinfo": "VM - (arg = 0x0) Decompressor hit a failure\n"
+    }));
+    assert!(!c.pagein_failure());
+    // A page-in line on a non-memory crash does not count either.
+    let c = ctx(serde_json::json!({
+        "exception": {"type": "EXC_CRASH", "signal": "SIGABRT"},
+        "ktriageinfo": "VM - Filesystem pagein returned an error in vnode_pagein\n"
+    }));
+    assert!(!c.pagein_failure());
+
+    // Pointer-authentication subtype: the first address still parses.
+    let c = ctx(serde_json::json!({
+        "exception": {"type": "EXC_BAD_ACCESS",
+            "subtype": "KERN_INVALID_ADDRESS at 0x00006f126c1a9aa0 -> 0x000000126c1a9aa0 (possible pointer authentication failure)"}
+    }));
+    assert_eq!(c.fault_address(), Some(0x6f126c1a9aa0));
+    assert!(c.pointer_auth());
+    assert!(c
+        .meanings()
+        .iter()
+        .any(|m| m.contains("pointer authentication")));
+
+    // Near-NULL is labelled as likely, address 0 as certain.
+    let near = ctx(serde_json::json!({
+        "exception": {"type": "EXC_BAD_ACCESS", "subtype": "KERN_INVALID_ADDRESS at 0x0000000000000010"}
+    }));
+    assert!(near.near_null() && !near.null_pointer());
+
+    // Lower-case `vmregioninfo` (Apple's documented key) is read.
+    let c = ctx(serde_json::json!({"vmregioninfo": "0 is not in any region.\nREGION TYPE"}));
+    assert_eq!(c.vm_region.as_deref(), Some("0 is not in any region."));
+
+    // Control characters from report text never reach the terminal.
+    let c = ctx(
+        serde_json::json!({"asi": {"libfoo.dylib": ["bad\u{1b}[2Jtext"]},
+                                   "ktriageinfo": "x\u{7}y\n"}),
+    );
+    assert_eq!(c.asi, vec!["libfoo.dylib: bad [2Jtext".to_string()]);
+    assert_eq!(c.ktriage, vec!["x y".to_string()]);
+
+    // An abort names the caller, not the pthread_kill stub on top.
+    let c = ctx(serde_json::json!({
+        "exception": {"type": "EXC_CRASH", "signal": "SIGABRT"},
+        "faultingThread": 0,
+        "threads": [{"frames": [
+            {"imageIndex": 0, "symbol": "__pthread_kill"},
+            {"imageIndex": 1, "symbol": "abort"},
+            {"imageIndex": 2, "symbol": "-[Foo bar]"}]}],
+        "usedImages": [{"name": "libsystem_kernel.dylib"}, {"name": "libsystem_c.dylib"}, {"name": "FooKit"}]
+    }));
+    assert_eq!(c.crashed_in.as_deref(), Some("FooKit (-[Foo bar])"));
+    // A memory fault inside a system library is reported where it happened.
+    let c = ctx(serde_json::json!({
+        "exception": {"type": "EXC_BAD_ACCESS", "signal": "SIGSEGV"},
+        "faultingThread": 0,
+        "threads": [{"frames": [{"imageIndex": 0, "symbol": "objc_msgSend"}, {"imageIndex": 1}]}],
+        "usedImages": [{"name": "libobjc.A.dylib"}, {"name": "FooKit"}]
+    }));
+    assert_eq!(
+        c.crashed_in.as_deref(),
+        Some("libobjc.A.dylib (objc_msgSend)")
+    );
+
+    // Codes are decoded only in the namespaces Apple shows them in.
+    assert!(crate::apple_docs::termination("SPRINGBOARD", 0x8badf00d).is_some());
+    assert!(crate::apple_docs::termination("DYLD", 0x8badf00d).is_none());
+
+    // Session identity: name plus Apple's install path.
+    assert!(crate::files::is_session_process(
+        "WindowServer",
+        Some("/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer")
+    ));
+    assert!(!crate::files::is_session_process(
+        "WindowServer",
+        Some("/Users/x/bin/WindowServer")
+    ));
+    assert!(crate::files::is_session_process("loginwindow", None));
+}
+
+#[test]
+fn review_fixes_for_panic_parsing() {
+    use crate::files::PanicContext;
+    // Intel layout: the value sits on the next line.
+    let intel = "panic(cpu 0 caller 0xffffff80): Kernel trap at 0xffffff80, type 14=page fault\n\
+                 BSD process name corresponding to current thread: kernel_task\n\
+                 Mac OS version:\n22G120\n\nKernel version:\nDarwin Kernel Version 22.6.0: x\n";
+    let c = PanicContext::from_panic_string(intel);
+    assert_eq!(c.os_version.as_deref(), Some("22G120"));
+    assert_eq!(
+        c.kernel_version.as_deref(),
+        Some("Darwin Kernel Version 22.6.0: x")
+    );
+    assert_eq!(c.panicked_process.as_deref(), Some("kernel_task"));
+    assert_eq!(c.kind.unwrap().marker, "kernel trap");
+
+    // Only the headline classifies: a body mentioning a watchdog does not.
+    let body = "panic(cpu 1 caller 0x1): Kernel data abort. at pc 0x2\n\n\n\
+                Panicked thread: 0x3\nthread name: userspace watchdog timeout helper\n";
+    let c = PanicContext::from_panic_string(body);
+    assert_eq!(c.kind.unwrap().marker, "kernel data abort");
+
+    // The classic watchdogd form names the service too.
+    let c = PanicContext::from_panic_string(
+        "panic(cpu 0 caller 0x1): watchdog timeout: no checkins from watchdogd in 90 seconds (0 total checkins since monitoring last enabled)",
+    );
+    assert_eq!(c.watchdog_service.as_deref(), Some("watchdogd"));
+    assert_eq!(c.kind.unwrap().marker, "watchdog timeout");
+}
+
+#[test]
+fn merged_crash_advice_matches_the_latest_report() {
+    let mk = |hours: i64, reading: Option<&str>, step: &str| {
+        let mut f = Finding::new("file.crash", Severity::Medium, "crash", "app crashed");
+        f.process = Some("app".into());
+        f.timestamp = Some(chrono::Utc::now() - chrono::Duration::hours(hours));
+        f.next_step = Some(step.into());
+        if let Some(r) = reading {
+            f.evidence.push(crate::report::Evidence {
+                source: crate::files::READING_SOURCE.into(),
+                excerpt: r.into(),
+            });
+        }
+        f
+    };
+    // Older report first, newest last; the merge must follow the newest.
+    let out = crate::correlate::run(
+        vec![
+            mk(11, Some("a NULL pointer"), "reinstall app"),
+            mk(1, Some("a page-in failed"), "run First Aid"),
+        ],
+        &[],
+        &[],
+        &[],
+    );
+    let f = out.iter().find(|f| f.rule_id == "file.crash").unwrap();
+    assert_eq!(f.next_step.as_deref(), Some("run First Aid"));
+    assert!(
+        f.detail.ends_with("Latest report: a page-in failed"),
+        "{}",
+        f.detail
+    );
+}
+
+#[test]
+fn pagein_failures_in_two_programs_point_at_storage() {
+    let mk = |proc_name: &str| {
+        let mut f = Finding::new("file.crash", Severity::Medium, "crash", "crashed");
+        f.process = Some(proc_name.into());
+        f.timestamp = Some(chrono::Utc::now());
+        f.evidence.push(crate::report::Evidence {
+            source: crate::files::READING_SOURCE.into(),
+            excerpt: "The kernel's triage says a page-in from the file system failed".into(),
+        });
+        f
+    };
+    let one = crate::correlate::run(vec![mk("git")], &[], &[], &[]);
+    assert!(!one.iter().any(|f| f.rule_id == "correlate.pagein_storage"));
+    let two = crate::correlate::run(vec![mk("git"), mk("Mail")], &[], &[], &[]);
+    let s = two
+        .iter()
+        .find(|f| f.rule_id == "correlate.pagein_storage")
+        .expect("storage finding");
+    assert_eq!(s.severity, Severity::High);
+    assert_eq!(s.evidence[0].excerpt, "Mail, git");
+    assert_eq!(two.iter().filter(|f| f.rule_id == "file.crash").count(), 2);
 }

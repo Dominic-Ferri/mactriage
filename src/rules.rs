@@ -128,6 +128,7 @@ pub const RULES: &[RuleInfo] = &[
     RuleInfo { id: "correlate.story", category: "varies", severity: "max of members", source: "correlator", detects: "Multiple different failure signals from one process merged into a root-cause story" },
     RuleInfo { id: "correlate.panic_kext", category: "kernel panic", severity: "high", source: "correlator", detects: "Kext named in a panic backtrace that is STILL loaded (root cause)" },
     RuleInfo { id: "correlate.post_update", category: "updates", severity: "annotation", source: "correlator", detects: "Findings that started within 48h of a software install get flagged" },
+    RuleInfo { id: "correlate.pagein_storage", category: "disk", severity: "high", source: "correlator", detects: "Crash reports of two or more different programs whose kernel triage says a page-in from the file system failed: the shared volume or disk, not one program" },
     RuleInfo { id: "correlate.spotlight_stack", category: "story", severity: "high", source: "correlator", detects: "Spotlight/knowledge indexer CPU abuse + mds errors + knowledge-daemon jetsam kills joined into one rebuild-the-index story" },
 ];
 
