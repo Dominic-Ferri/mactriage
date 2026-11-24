@@ -41,6 +41,10 @@ The builder does these steps:
 
 The builder keeps the verified clean staging bundle under `target/app-stages/`.
 
+`build-universal.sh` fails when the binary contains the build Mac's home path.
+Panic messages inside the binary would otherwise carry that path to every Mac
+the app runs on.
+
 ## Signing / Gatekeeper
 
 - The build signs ad hoc by default. You do not need a paid Apple Developer

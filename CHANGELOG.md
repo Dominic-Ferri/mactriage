@@ -44,6 +44,10 @@
 - `sudo mactriage baseline` saves to the folder of the account that ran sudo
   and hands the files to that account. Before, it saved under root's home
   folder, so a later plain `mactriage diff` reported no baseline.
+- The release binary no longer carries the build Mac's home path. Panic
+  messages inside the binary named the builder's cargo and rustup folders.
+  The build now maps those paths to `/cargo` and `/rustup`, and it fails when
+  the binary still contains the home path.
 
 ## 0.15.1 (2026-11-23)
 
