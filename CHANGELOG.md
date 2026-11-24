@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.15.0 (2026-11-23)
+
+- Every finding now lists the official Apple documentation behind it: the page
+  title, the URL, and a short summary of what the page says. 97 of the 114
+  rules cite developer.apple.com, support.apple.com, Apple Platform Security,
+  Apple Platform Deployment, or Apple's own man pages. The other 17 rules name
+  the source they rely on instead (for example SMC shutdown-cause codes, GPU
+  restart reports, Jamf, `/etc/hosts`), because Apple publishes nothing for
+  them. The terminal report, HTML report, dashboard and `mactriage rules` show
+  the references, and JSON has them in a new `references` field on each
+  finding (additive; schema version unchanged). Every URL was fetched and
+  every summary was checked against the fetched page.
+- App crash reports are decoded field by field, as Apple's "Interpreting the
+  JSON format of a crash report" lays them out: exception subtype and codes,
+  the termination namespace, code and terminating process, Application
+  Specific Information, kernel triage, the faulting address region, the image
+  and symbol at the top of the crashed thread, the responsible process, and
+  Rosetta translation. Each exception type, signal, KERN subtype and
+  termination code (for example 0x8badf00d) carries Apple's explanation for
+  it.
+- A crash whose kernel triage reports a failed page-in (for example "APFS -
+  Pagein of compressed inode failed") is now reported as a storage read
+  failure, with Disk Utility First Aid as the next step, instead of advice to
+  reinstall the app. It stays Medium. Why: a `git` crash on this Mac was a
+  SIGBUS / KERN_MEMORY_ERROR caused by a failed APFS read, and the old advice
+  was "update or reinstall git".
+- A fault in the first memory page is labelled a NULL pointer dereference.
+- A WindowServer or loginwindow crash is now High: it ends the login session
+  and quits every open app without a kernel panic. Repeated session crashes
+  stay High when they merge into one finding, and merged crash findings keep
+  the Apple references and the latest report's detail.
+- Kernel panic findings add the panic type (userspace watchdog, sleep or wake
+  transition timeout, zone map exhausted, kernel data abort, instruction fetch
+  abort, hardware watchdog, kernel trap), the panicked process, the service
+  that stopped checking in with the userspace watchdog, the last started kext,
+  and the OS, kernel and iBoot versions.
+
 ## 0.14.2 (2026-11-18)
 
 - The unified-log progress bar no longer stops at about 83% while the log is

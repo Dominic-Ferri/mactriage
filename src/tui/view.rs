@@ -451,6 +451,22 @@ fn render_findings(frame: &mut Frame, area: Rect, report: &Report, selected: usi
             )));
         }
     }
+    if !finding.references.is_empty() {
+        detail.extend([
+            Line::from(""),
+            Line::from(Span::styled(
+                "Apple documentation",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+        ]);
+        for r in &finding.references {
+            detail.push(Line::from(format!("• {}: {}", r.title, r.apple_says)));
+            detail.push(Line::from(Span::styled(
+                format!("  {}", r.url),
+                Style::default().add_modifier(Modifier::UNDERLINED),
+            )));
+        }
+    }
     frame.render_widget(
         Paragraph::new(detail)
             .scroll((scroll, 0))

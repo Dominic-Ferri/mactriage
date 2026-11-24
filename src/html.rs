@@ -44,6 +44,7 @@ pub fn render(report: &Report) -> String {
   <p class="fdetail">{}</p>
   {}
   {}
+  {}
 </div>
 "#,
             esc(f.severity.label()),
@@ -57,7 +58,8 @@ pub fn render(report: &Report) -> String {
                 String::new()
             } else {
                 format!("<details><summary>evidence</summary>{evidence}</details>")
-            }
+            },
+            apple_refs(&f.references)
         ));
     }
 
@@ -196,6 +198,8 @@ pub fn render(report: &Report) -> String {
   .fwhen {{ color:#888; font-size:.85rem; white-space:nowrap; }}
   .fdetail {{ margin:.4rem 0 .2rem; }}
   .fstep {{ margin:.2rem 0; color:#0a6; font-weight:500; }}
+  .frefs {{ margin:.2rem 0 .2rem 1.2rem; padding:0; font-size:.9rem; }}
+  .frefs li {{ margin:.15rem 0; }}
   .ev {{ color:#777; font-size:.85rem; margin:.15rem 0; overflow-x:auto; }}
   code {{ background:#eceef0; padding:.05rem .3rem; border-radius:3px; font-size:.85em; }}
   details summary {{ cursor:pointer; color:#888; font-size:.85rem; }}
@@ -288,4 +292,25 @@ fn list_block(title: &str, items: &[String]) -> String {
             .map(|item| format!("<li>{}</li>", esc(item)))
             .collect::<String>()
     )
+}
+
+/// "Apple documentation" block: each reference as a link plus what it says.
+/// Only https Apple URLs from the built-in table reach here, but the URL is
+/// escaped like any other text.
+fn apple_refs(refs: &[crate::report::Reference]) -> String {
+    if refs.is_empty() {
+        return String::new();
+    }
+    let items = refs
+        .iter()
+        .map(|r| {
+            format!(
+                "<li><a href=\"{}\" rel=\"noreferrer\">{}</a>: {}</li>",
+                esc(&r.url),
+                esc(&r.title),
+                esc(&r.apple_says)
+            )
+        })
+        .collect::<String>();
+    format!("<details open><summary>Apple documentation</summary><ul class=\"frefs\">{items}</ul></details>")
 }

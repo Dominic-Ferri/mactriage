@@ -178,6 +178,20 @@ pub struct Finding {
     pub next_step: Option<String>,
     pub count: u32,
     pub evidence: Vec<Evidence>,
+    /// Official Apple documentation behind this finding: report-specific
+    /// entries first (for example the exception type of one crash), then the
+    /// rule's own references. Absent in reports from < 0.15.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub references: Vec<Reference>,
+}
+
+/// One official Apple document and what it says about the finding.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Reference {
+    pub title: String,
+    pub url: String,
+    /// Plain-English summary of the cited passage, not a verbatim quote.
+    pub apple_says: String,
 }
 
 impl Finding {
@@ -194,6 +208,7 @@ impl Finding {
             next_step: None,
             count: 1,
             evidence: Vec::new(),
+            references: Vec::new(),
         }
     }
 }
@@ -430,6 +445,9 @@ impl Report {
 
     /// Sort by severity desc, then most recent first; cap per category unless --full.
     pub fn finalize(&mut self, cap_per_category: Option<usize>) {
+        for f in &mut self.findings {
+            crate::apple_docs::attach(f);
+        }
         self.findings.sort_by(|a, b| {
             b.severity
                 .cmp(&a.severity)

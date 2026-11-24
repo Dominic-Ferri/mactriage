@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2012%2B-F4BD47?style=flat-square&logo=apple&logoColor=white&labelColor=000000" alt="Platform: macOS 12 or later">
   <img src="https://img.shields.io/badge/language-Rust-C00027?style=flat-square&logo=rust&logoColor=white&labelColor=000000" alt="Language: Rust">
-  <img src="https://img.shields.io/badge/version-0.14.2-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.14.2">
+  <img src="https://img.shields.io/badge/version-0.15.0-F4BD47?style=flat-square&labelColor=000000" alt="Version 0.15.0">
   <img src="https://img.shields.io/badge/license-MIT-C00027?style=flat-square&labelColor=000000" alt="License: MIT">
   <img src="https://img.shields.io/badge/mode-read--only-C00027?style=flat-square&labelColor=000000" alt="Mode: read-only">
 </p>
@@ -83,7 +83,7 @@ Run `mactriage --help` for the full list of categories and options.
 
 | Area | What mactriage checks |
 |---|---|
-| **Crash and panic reports** | Kernel panics with a likely cause, app crashes, hangs, jetsam kills, CPU and wakeup limits, GPU restarts, shutdown stalls |
+| **Crash and panic reports** | Kernel panics with a likely cause, the panic type, the panicked process and the service a userspace watchdog gave up on; app crashes with every field Apple documents decoded (exception type and subtype, signal, termination reason, application-specific messages, kernel triage, faulting address region, crashed image); WindowServer and loginwindow crashes that end the login session; hangs, jetsam kills, CPU and wakeup limits, GPU restarts, shutdown stalls |
 | **Unified log: system** | Shutdown causes, watchdog timeouts, thermal throttling, disk and APFS errors, GPU resets, launchd service crashes |
 | **Unified log: devices** | Kext load failures, USB and Thunderbolt over-current, sleep and wake failures, Wi-Fi disconnects, Bluetooth retries |
 | **Unified log: services** | Spotlight errors, Software Update failures, Time Machine errors |
@@ -125,6 +125,14 @@ The report also gives the whole Mac one overall condition:
 | UNKNOWN | An incomplete scan with no findings above Info |
 
 The exit code follows the worst finding: `0` healthy, `10` low, `20` medium, `30` high, `40` fatal. An UNKNOWN scan exits `50`, so a script never reads an incomplete scan as healthy. Code `2` is a usage error, and code `70` is an internal error. Scripts can use the exit code without parsing the output.
+
+### Apple documentation
+
+Each finding lists the official Apple pages that explain it: the developer documentation on crash reports, Apple Support articles, the Mac User Guide, and the Apple Platform Security and Platform Deployment guides. Each entry gives the page title, its URL, and a short summary of what the page says about this finding. A crash finding first lists the pages for its own exception type, signal, subtype, and termination code, then the pages for the rule.
+
+The terminal report prints these entries under each finding. The HTML report and the dashboard show them in an "Apple documentation" section, and JSON has them in `references`. For 17 rules Apple publishes nothing relevant, for example SMC shutdown-cause codes, GPU restart reports, Jamf, and `/etc/hosts`. `mactriage rules` names the source that each of these rules relies on instead.
+
+Some interpretations are mactriage's own, not Apple's: the panic type, "storage read failure" for a crash whose kernel triage reports a failed page-in, and "NULL pointer dereference" for a fault in the first memory page. The detail text gives these interpretations, and the references give Apple's text.
 
 ### When a scan is incomplete
 
@@ -376,7 +384,7 @@ Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads 
 <details>
 <summary><b>Rule list</b></summary>
 
-There are 114 rules. The table splits the 40 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, and what it detects.
+There are 114 rules. The table splits the 40 security rules into three rows. `mactriage rules` prints each rule with its category, severity, source, what it detects, and its Apple documentation (or why there is none).
 
 | Group | Count | Rule IDs |
 |---|---|---|

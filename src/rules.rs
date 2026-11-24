@@ -136,9 +136,32 @@ pub fn table() -> String {
     let mut t = Table::new();
     t.load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Rule", "Category", "Severity", "Source", "Detects"]);
+        .set_header(vec![
+            "Rule",
+            "Category",
+            "Severity",
+            "Source",
+            "Detects",
+            "Apple documentation",
+        ]);
     for r in RULES {
-        t.add_row(vec![r.id, r.category, r.severity, r.source, r.detects]);
+        let cites = crate::apple_docs::rule_cites(r.id);
+        let docs = if cites.is_empty() {
+            crate::apple_docs::NO_APPLE_DOC
+                .iter()
+                .find(|(id, _)| *id == r.id)
+                .map(|(_, why)| format!("none: {why}"))
+                .unwrap_or_default()
+        } else {
+            cites
+                .iter()
+                .map(|c| format!("{} <{}>", c.doc.title, c.doc.url))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        t.add_row(vec![
+            r.id, r.category, r.severity, r.source, r.detects, &docs,
+        ]);
     }
     t.to_string()
 }

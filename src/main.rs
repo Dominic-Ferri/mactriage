@@ -1,6 +1,7 @@
 //! mactriage — severity-ranked triage of macOS crashes, panics, hangs, and
 //! performance problems.
 
+mod apple_docs;
 mod audit;
 mod baseline;
 mod boot;

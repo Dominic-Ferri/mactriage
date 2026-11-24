@@ -2846,3 +2846,224 @@ fn cpu_limit_reports_are_low_unless_recurring() {
         "signpost_reporter exceeded its CPU usage limit 4 times"
     );
 }
+
+fn crash_ips(proc_name: &str, body: serde_json::Value) -> String {
+    format!(
+        "{}\n{}",
+        serde_json::json!({"app_name": proc_name, "timestamp": "2026-11-20 10:00:00.00 -0500", "bug_type": "309"}),
+        body
+    )
+}
+
+fn scan_one(dir_name: &str, file: &str, text: &str) -> Vec<Finding> {
+    use std::collections::HashSet;
+    let dir = std::env::temp_dir().join(dir_name);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join(file), text).unwrap();
+    let cats: HashSet<crate::report::Category> =
+        crate::report::Category::ALL.iter().copied().collect();
+    let since = chrono::Utc::now() - chrono::Duration::days(1);
+    let res = crate::files::scan(std::slice::from_ref(&dir), since, chrono::Utc::now(), &cats);
+    let _ = std::fs::remove_dir_all(&dir);
+    res.findings
+}
+
+#[test]
+fn crash_pagein_failure_reads_as_a_disk_problem() {
+    // Synthetic copy of the field case: a read of a mapped file failed in
+    // APFS, so the process died with SIGBUS / KERN_MEMORY_ERROR.
+    let body = serde_json::json!({
+        "procName": "toolx",
+        "exception": {"type": "EXC_BAD_ACCESS", "signal": "SIGBUS",
+                      "subtype": "KERN_MEMORY_ERROR at 0x000000010253c000",
+                      "codes": "0x000000000000000a, 0x000000010253c000"},
+        "termination": {"namespace": "SIGNAL", "code": 10, "indicator": "Bus error: 10", "byProc": "exc handler"},
+        "ktriageinfo": "APFS - (arg = 0x0) Pagein of compressed inode failed\nVM - (arg = 0x0) Page has error bit set\n",
+        "vmRegionInfo": "0x10253c000 is in 0x10253c000-0x102690000;  bytes after start: 0\n  REGION TYPE",
+        "faultingThread": 0,
+        "threads": [{"frames": [{"imageIndex": 0, "symbol": "inflate"}]}],
+        "usedImages": [{"name": "libz.1.dylib"}]
+    });
+    let f = scan_one(
+        "mactriage-test-pagein",
+        "toolx-2026-11-20-100000.ips",
+        &crash_ips("toolx", body),
+    );
+    let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
+    assert_eq!(
+        c.severity,
+        Severity::Medium,
+        "storage symptom must not escalate on its own"
+    );
+    assert!(c.detail.contains("storage read failure"), "{}", c.detail);
+    assert!(c.next_step.as_deref().unwrap().contains("First Aid"));
+    let ev = |s: &str| {
+        c.evidence
+            .iter()
+            .find(|e| e.source == s)
+            .map(|e| e.excerpt.clone())
+    };
+    assert!(ev("kernel triage")
+        .unwrap()
+        .contains("Pagein of compressed inode failed"));
+    assert_eq!(ev("crashed in").as_deref(), Some("libz.1.dylib (inflate)"));
+    assert!(ev("termination")
+        .unwrap()
+        .contains("namespace SIGNAL, code 0xa"));
+    assert!(
+        !c.references.is_empty(),
+        "decoded fields carry Apple references"
+    );
+}
+
+#[test]
+fn crash_null_pointer_and_session_crash() {
+    let body = serde_json::json!({
+        "procName": "WindowServer",
+        "exception": {"type": "EXC_BAD_ACCESS", "signal": "SIGSEGV",
+                      "subtype": "KERN_INVALID_ADDRESS at 0x0000000000000000"},
+        "termination": {"namespace": "SIGNAL", "code": 11}
+    });
+    let f = scan_one(
+        "mactriage-test-session",
+        "WindowServer-2026-11-20-100000.ips",
+        &crash_ips("WindowServer", body),
+    );
+    let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
+    assert_eq!(c.severity, Severity::High);
+    assert!(c.summary.contains("login session ended"));
+    assert!(
+        c.detail.contains("NULL pointer dereference"),
+        "{}",
+        c.detail
+    );
+
+    // Same exception far from page zero: not a NULL dereference.
+    let body = serde_json::json!({
+        "procName": "app",
+        "exception": {"type": "EXC_BAD_ACCESS", "signal": "SIGSEGV",
+                      "subtype": "KERN_INVALID_ADDRESS at 0x0000530400000000"}
+    });
+    let f = scan_one(
+        "mactriage-test-wild",
+        "app-2026-11-20-100000.ips",
+        &crash_ips("app", body),
+    );
+    let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
+    assert_eq!(c.severity, Severity::Medium);
+    assert!(!c.detail.contains("NULL pointer dereference"));
+    assert!(!c.detail.contains("storage read failure"));
+}
+
+#[test]
+fn crash_watchdog_termination_is_decoded() {
+    let body = serde_json::json!({
+        "procName": "app",
+        "exception": {"type": "EXC_CRASH", "signal": "SIGKILL"},
+        "termination": {"namespace": "FRONTBOARD", "code": 0x8badf00d_u64}
+    });
+    let f = scan_one(
+        "mactriage-test-8badf00d",
+        "app-2026-11-20-100000.ips",
+        &crash_ips("app", body),
+    );
+    let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
+    assert!(
+        c.references
+            .iter()
+            .any(|r| r.apple_says.contains("0x8badf00d") && r.url.ends_with("/sigkill")),
+        "{:?}",
+        c.references
+    );
+    assert!(c.next_step.as_deref().unwrap().contains("not responding"));
+    // A SIGNAL-namespace code is a signal number and must not alias a
+    // documented termination code.
+    assert!(crate::apple_docs::termination("SIGNAL", 0x8badf00d).is_none());
+}
+
+#[test]
+fn panic_context_reads_the_well_known_lines() {
+    let ps = "panic(cpu 2 caller 0xfffffe0012345678): userspace watchdog timeout: no successful checkins from WindowServer (2 induced crashes) in 120 seconds\n\
+              Panicked task 0xfffffe1b2a3c4d50: 3402 pages, 16 threads: pid 123: watchdogd\n\
+              OS version: 25A100\n\
+              Kernel version: Darwin Kernel Version 25.0.0: example; root:xnu-1/RELEASE_ARM64_T8132\n\
+              iBoot version: iBoot-1.2.3\n\
+              last started kext at 12345: com.vendor.driver\t1.0 (addr 0x1, size 2)\n";
+    let c = crate::files::PanicContext::from_panic_string(ps);
+    assert_eq!(c.watchdog_service.as_deref(), Some("WindowServer"));
+    assert_eq!(c.panicked_process.as_deref(), Some("watchdogd (pid 123)"));
+    assert_eq!(c.last_started_kext.as_deref(), Some("com.vendor.driver"));
+    assert_eq!(c.os_version.as_deref(), Some("25A100"));
+    assert_eq!(c.iboot_version.as_deref(), Some("iBoot-1.2.3"));
+    assert_eq!(c.kind.unwrap().marker, "userspace watchdog timeout");
+    // A plain hardware watchdog must not be read as the userspace one.
+    let hw = crate::files::PanicContext::from_panic_string(
+        "panic(cpu 0): watchdog timeout: no response",
+    );
+    assert_eq!(hw.kind.unwrap().marker, "watchdog timeout");
+    assert!(
+        crate::files::PanicContext::from_panic_string("panic(cpu 0): something new")
+            .kind
+            .is_none()
+    );
+}
+
+#[test]
+fn every_rule_has_apple_docs_or_a_stated_reason() {
+    let ids: std::collections::HashSet<&str> = crate::rules::RULES.iter().map(|r| r.id).collect();
+    for id in &ids {
+        let cited = !crate::apple_docs::rule_cites(id).is_empty();
+        let excused = crate::apple_docs::NO_APPLE_DOC.iter().any(|(r, _)| r == id);
+        assert!(
+            cited || excused,
+            "{id}: no Apple reference and no stated reason"
+        );
+    }
+    for (id, why) in crate::apple_docs::NO_APPLE_DOC {
+        assert!(ids.contains(id), "NO_APPLE_DOC names unknown rule {id}");
+        assert!(!why.is_empty());
+    }
+    for id in crate::apple_docs::CITED_RULES {
+        assert!(ids.contains(id), "rule_cites names unknown rule {id}");
+    }
+    for url in crate::apple_docs::all_urls() {
+        assert!(
+            url.starts_with("https://developer.apple.com/")
+                || url.starts_with("https://support.apple.com/")
+                || url.starts_with("https://github.com/apple-oss-distributions/")
+                || url.starts_with("https://opensource.apple.com/"),
+            "non-Apple URL {url}"
+        );
+    }
+}
+
+#[test]
+fn repeated_session_crash_stays_high_and_keeps_apple_references() {
+    let mk = |hours: i64| {
+        let mut f = Finding::new(
+            "file.crash",
+            Severity::High,
+            "crash",
+            "WindowServer crashed (EXC_BAD_ACCESS): the login session ended and open apps quit",
+        );
+        f.process = Some("WindowServer".into());
+        f.timestamp = Some(chrono::Utc::now() - chrono::Duration::hours(hours));
+        f.references.push(crate::report::Reference {
+            title: "EXC_BAD_ACCESS".into(),
+            url: "https://developer.apple.com/documentation/xcode/exc_bad_access".into(),
+            apple_says: "x".into(),
+        });
+        f
+    };
+    // 2 crashes 10 h apart: repeated, not a loop.
+    let out = crate::correlate::run(vec![mk(1), mk(11)], &[], &[], &[]);
+    let f = out
+        .iter()
+        .find(|f| f.rule_id == "file.crash")
+        .expect("merged crash");
+    assert_eq!(f.count, 2);
+    assert_eq!(f.severity, Severity::High);
+    assert_eq!(f.references.len(), 1);
+    assert!(f.detail.contains("Latest report"));
+}

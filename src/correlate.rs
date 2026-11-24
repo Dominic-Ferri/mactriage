@@ -317,6 +317,7 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
                         .join("; ")
                 ));
             }
+            keep_references(&mut f, group.iter());
             merged.push(f);
         } else if distinct_rules.len() >= 2 && group.len() >= 2 {
             // Story: different failure modes from one process → one narrative, max severity.
@@ -359,6 +360,7 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
             for g in group.iter().take(4) {
                 f.evidence.extend(g.evidence.iter().cloned());
             }
+            keep_references(&mut f, group.iter());
             merged.push(f);
         } else if crashes.len() >= 2 && distinct_rules.len() == 1 {
             // Repeated crashes of one process that are NOT a tight loop: merge
@@ -366,9 +368,16 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
             let count = crashes.len() as u32;
             let first = crash_times.first().copied();
             let last = crash_times.last().copied();
+            // A session crash (WindowServer, loginwindow) stays High when it repeats.
+            let severity = crashes
+                .iter()
+                .map(|c| c.severity)
+                .max()
+                .unwrap_or(Severity::Medium)
+                .max(Severity::Medium);
             let mut f = Finding::new(
                 "file.crash",
-                Severity::Medium,
+                severity,
                 "crash",
                 &format!("{proc_name} crashed {count} times (spread out, not a tight loop)"),
             );
@@ -382,9 +391,14 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
                  plugin, a bad update, or corrupted state."
             );
             f.next_step = crashes.iter().find_map(|c| c.next_step.clone());
+            if let Some(latest) = crashes.iter().max_by_key(|c| c.timestamp) {
+                f.detail
+                    .push_str(&format!(" Latest report: {}", latest.detail));
+            }
             for c in crashes.iter().take(3) {
                 f.evidence.extend(c.evidence.iter().cloned());
             }
+            keep_references(&mut f, crashes.iter().copied());
             merged.push(f);
         } else {
             merged.extend(group);
@@ -392,6 +406,16 @@ fn crash_loops_and_stories(findings: Vec<Finding>) -> Vec<Finding> {
     }
     passthrough.extend(merged);
     passthrough
+}
+
+/// Carry the report-specific Apple references of merged members over to the
+/// merged finding; the rule's own references are added later by `finalize`.
+fn keep_references<'a>(f: &mut Finding, members: impl Iterator<Item = &'a Finding>) {
+    for m in members {
+        for r in &m.references {
+            crate::apple_docs::push_unique(&mut f.references, r.clone());
+        }
+    }
 }
 
 fn short_kind(rule_id: &str) -> &'static str {

@@ -219,6 +219,7 @@ fn findings(report: &Report, style: &Style, verbose: u8, out: &mut String) {
     ];
     let mut last_detail = String::new();
     let mut last_step = String::new();
+    let mut last_refs: Vec<crate::report::Reference> = Vec::new();
     for sev in severities {
         let group: Vec<_> = report
             .findings
@@ -279,6 +280,21 @@ fn findings(report: &Report, style: &Style, verbose: u8, out: &mut String) {
                 } else {
                     out.push_str(&format!("      → {}\n", wrap(step, WIDTH - 8, "        ")));
                     last_step = step.clone();
+                }
+            }
+            if !f.references.is_empty() {
+                if f.references == last_refs {
+                    out.push_str("      Apple: same documentation as above\n");
+                } else {
+                    for r in &f.references {
+                        let line = format!("Apple, \"{}\": {}", r.title, r.apple_says);
+                        out.push_str(&format!(
+                            "      {}\n        {}\n",
+                            wrap(&line, WIDTH - 6, "        "),
+                            style.paint("2;4", &r.url)
+                        ));
+                    }
+                    last_refs = f.references.clone();
                 }
             }
             if verbose >= 1 {
