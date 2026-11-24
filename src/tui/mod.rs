@@ -38,6 +38,23 @@ pub fn run(opts: UiOpts) -> std::io::Result<i32> {
         std::env::var("TERM").unwrap_or_default(),
     ));
     trace::spawn_watchdog(app.trace.clone(), app.hb.clone());
+    if opts.privileged {
+        // sudo forgets the cached password after five minutes; keep it fresh
+        // while the dashboard is open, so a rerun still gets full coverage.
+        std::thread::spawn(|| loop {
+            std::thread::sleep(Duration::from_secs(240));
+            let fresh = std::process::Command::new("/usr/bin/sudo")
+                .args(["-n", "-v"])
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|s| s.success());
+            if !fresh {
+                return;
+            }
+        });
+    }
     if opts.autorun {
         app.start_selected();
     }

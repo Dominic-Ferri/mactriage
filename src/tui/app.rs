@@ -5,6 +5,7 @@ use chrono::Local;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -222,10 +223,17 @@ impl App {
         let profile = self.selected_profile();
         match self.spawn_worker(profile) {
             Ok(worker) => {
+                let pgid = crate::util::run(
+                    "/bin/ps",
+                    &["-o", "pgid=", "-p", &worker.child.id().to_string()],
+                )
+                .map(|s| s.trim().to_string())
+                .unwrap_or_default();
                 self.trace.line(format!(
-                    "worker started: {} · pid {} · args {}",
+                    "worker started: {} · pid {} · pgid {} · args {}",
                     profile.label(),
                     worker.child.id(),
+                    pgid,
                     profile.worker_args().join(" ")
                 ));
                 self.hb.worker_started(worker.child.id(), self.privileged);
@@ -266,6 +274,9 @@ impl App {
         let mut command = if self.privileged {
             let mut command = Command::new("/usr/bin/sudo");
             command.arg("-n").arg(&executable);
+            // Trial for the macOS 26.6.2 dashboard freeze: the privileged
+            // worker no longer shares the dashboard's process group.
+            command.process_group(0);
             command
         } else {
             Command::new(&executable)
@@ -387,6 +398,19 @@ impl App {
             return;
         }
         if self.worker_exited && self.worker_stream_closed {
+            // `sudo -n` fails this way once the cached password has expired.
+            if self.privileged && self.worker_stderr.contains("password is required") {
+                self.privileged = false;
+                self.trace
+                    .line("sudo credential expired: restarting the scan without sudo");
+                self.start_selected();
+                if self.worker.is_some() {
+                    self.status =
+                        "The sudo password expired. The scan restarted with reduced coverage."
+                            .into();
+                }
+                return;
+            }
             self.screen = Screen::Home;
             self.exit_code = 70;
             self.status = if self.worker_stderr.is_empty() {
@@ -704,5 +728,36 @@ mod tests {
         app.handle_key(key(KeyCode::PageDown));
         app.handle_key(key(KeyCode::Right));
         assert_eq!(app.result_scroll, 0);
+    }
+
+    #[test]
+    fn expired_sudo_restarts_the_scan_with_reduced_coverage() {
+        // A worker that is already there makes start_selected() do nothing,
+        // so this test starts no scan worker of its own.
+        let mut child = std::process::Command::new("/bin/sleep")
+            .arg("1")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let stdin = child.stdin.take().unwrap();
+        let mut app = App::new(true);
+        app.worker = Some(super::WorkerControl { child, stdin });
+        app.worker_exited = true;
+        app.worker_stream_closed = true;
+        app.worker_stderr = "sudo: a password is required".into();
+        app.finalize_worker_state();
+        assert!(!app.privileged);
+        assert!(app.status.contains("expired"), "{}", app.status);
+        assert_eq!(app.exit_code(), 0);
+        app.cancel_and_reap_worker();
+        // Control: any other worker failure keeps the privilege and fails.
+        let mut app = App::new(true);
+        app.worker_exited = true;
+        app.worker_stream_closed = true;
+        app.worker_stderr = "killed".into();
+        app.finalize_worker_state();
+        assert!(app.privileged);
+        assert_eq!(app.screen, Screen::Home);
+        assert_eq!(app.exit_code(), 70);
     }
 }

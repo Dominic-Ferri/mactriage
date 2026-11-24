@@ -32,6 +32,15 @@
   `sec.wifi_weak` could never fire, and every audit reported the type as
   unreadable. When that happens, the audit now asks System Profiler, which
   needs about 12 seconds more.
+- The dashboard keeps full coverage for a rerun. It lost the cached sudo
+  password after five minutes, so a rerun failed with "a password is
+  required". It now refreshes the password every four minutes while it is
+  open. When the password still expires, for example after the Mac slept, the
+  scan restarts with reduced coverage and the status line says so.
+- The privileged scan worker starts in its own process group. This is a trial
+  fix for a dashboard freeze on macOS 26.6.2 that has no root cause yet. The
+  trace now records the worker's process group, so the next field trace shows
+  whether a freeze still happens.
 
 ## 0.15.1 (2026-11-23)
 

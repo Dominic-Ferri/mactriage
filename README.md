@@ -303,6 +303,8 @@ Export writes HTML or JSON and never overwrites an existing file. The first resu
 
 The dashboard itself runs as you. When it needs root, it starts a separate scan worker with sudo. The dashboard and the worker communicate over a private JSON-lines channel on stdin and stdout. Only the read-only scanner runs as root. The dashboard and the files it exports stay owned by your user.
 
+The dashboard keeps the cached password fresh while it is open. If the password still expires, for example after the Mac slept, the next scan starts with reduced coverage and the status line says so.
+
 </details>
 
 <details>
