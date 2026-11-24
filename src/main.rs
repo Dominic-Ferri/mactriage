@@ -112,9 +112,10 @@ fn main() {
         Some(Command::Scan(opts)) => run_scan_cli(opts),
         Some(Command::Snapshot(opts)) => run_snapshot_cli(opts),
         Some(Command::Security(opts)) => {
-            let report = scan::collect_security(&Progress::new(true));
+            let mut report = scan::collect_security(&Progress::new(true));
             output(
-                &report,
+                &mut report,
+                None,
                 opts.json,
                 opts.html.as_deref(),
                 opts.verbose,
@@ -167,8 +168,9 @@ fn run_scan_cli(opts: ScanOpts) -> i32 {
     };
     let cancel = CancellationToken::default();
     match scan::collect_scan(&opts, &progress, &cancel) {
-        Ok(run) => output(
-            &run.report,
+        Ok(mut run) => output(
+            &mut run.report,
+            if opts.full { None } else { Some(10) },
             opts.json,
             opts.html.as_deref(),
             opts.verbose,
@@ -185,9 +187,10 @@ fn run_scan_cli(opts: ScanOpts) -> i32 {
 fn run_snapshot_cli(opts: SnapshotOpts) -> i32 {
     let progress = Progress::new(true);
     let cancel = CancellationToken::default();
-    let run = scan::collect_snapshot(&opts, &progress, &cancel);
+    let mut run = scan::collect_snapshot(&opts, &progress, &cancel);
     output(
-        &run.report,
+        &mut run.report,
+        None,
         opts.json,
         None,
         opts.verbose,
@@ -229,8 +232,11 @@ fn run_watch(opts: WatchOpts) -> i32 {
     }
 }
 
+/// `cap` limits the findings per category in the terminal report only: the
+/// HTML file and the JSON output always list every finding.
 fn output(
-    report: &Report,
+    report: &mut Report,
+    cap: Option<usize>,
     json: bool,
     html_path: Option<&str>,
     verbose: u8,
@@ -255,6 +261,7 @@ fn output(
             }
         }
     } else {
+        report.finalize(cap);
         let style = render::Style::new(no_color);
         print!("{}", render::render(report, &style, verbose, quiet));
     }

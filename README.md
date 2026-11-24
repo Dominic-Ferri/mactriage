@@ -141,6 +141,7 @@ A scan with zero findings is good news only if mactriage read every source. mact
 - `log show` fails, exits with an error, or reaches the timeout.
 - A multi-hour log window returns zero lines.
 - mactriage cannot read a report folder. The usual cause is missing Full Disk Access.
+- `mactriage security` runs without sudo. Six of its checks need root.
 
 An incomplete scan shows a note in the terminal and HTML reports. In JSON, it sets `"complete": false`. Its condition is UNKNOWN, never HEALTHY.
 
@@ -320,6 +321,7 @@ The dashboard itself runs as you. When it needs root, it starts a separate scan 
 - **Terminal:** color when the output is a TTY. `--no-color` and `NO_COLOR` disable the color.
 - **HTML:** one self-contained file with no external assets. You can attach it to a ticket.
 - **JSON:** `schema_version` 2. It includes the tool version, the scanned time window, the `complete` flag, and every finding with its evidence. It also holds the recovery assessment and `log_events` (every log line that matched a rule). New versions only add fields, so older consumers continue to work.
+- **Finding count:** the JSON and HTML reports always list every finding. The terminal report shows 10 findings per category, and `--full` shows all of them.
 
 Reports never include serial numbers. mactriage does not read them from the battery, the SSD, or the system.
 

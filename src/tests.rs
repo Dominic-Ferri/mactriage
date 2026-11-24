@@ -3261,3 +3261,66 @@ fn escape_sequences_in_a_crash_report_never_reach_the_finding_text() {
     );
     assert!(!all.contains('\u{1b}') && !all.contains('\u{7}'), "{all}");
 }
+
+fn report_with(findings: Vec<Finding>) -> crate::report::Report {
+    crate::report::Report {
+        schema_version: crate::report::SCHEMA_VERSION,
+        tool: crate::report::TOOL_NAME.into(),
+        tool_version: crate::report::TOOL_VERSION.into(),
+        generated_at: chrono::Utc::now(),
+        scan_window: "test".into(),
+        window_since: None,
+        window_until: None,
+        complete: true,
+        host: crate::host::host_info(false),
+        vitals: vec![],
+        findings,
+        skipped: vec![],
+        notes: vec![],
+        recovery: None,
+        stats: Default::default(),
+        log_events: vec![],
+        coverage: Vec::new(),
+    }
+}
+
+#[test]
+fn only_the_terminal_report_caps_findings() {
+    let hangs: Vec<Finding> = (0..12)
+        .map(|n| Finding::new("file.hang", Severity::Low, "hang", &format!("app {n} hung")))
+        .collect();
+
+    let mut as_json = report_with(hangs.clone());
+    assert_eq!(
+        crate::output(&mut as_json, Some(10), true, None, 0, false, true),
+        10
+    );
+    assert_eq!(as_json.findings.len(), 12);
+    assert!(as_json.notes.is_empty(), "{:?}", as_json.notes);
+
+    let mut as_terminal = report_with(hangs);
+    crate::output(&mut as_terminal, Some(10), false, None, 0, false, true);
+    assert_eq!(as_terminal.findings.len(), 10);
+    assert!(
+        as_terminal
+            .notes
+            .iter()
+            .any(|n| n == "2 more hang findings hidden — use --full to see all"),
+        "{:?}",
+        as_terminal.notes
+    );
+}
+
+#[test]
+fn html_report_warns_when_incomplete_without_notes() {
+    // A report folder that could not be read leaves no note.
+    let mut report = report_with(vec![]);
+    report.complete = false;
+    report.skipped.push(crate::report::Skipped {
+        what: "/Library/Logs/DiagnosticReports".into(),
+        reason: "permission denied".into(),
+    });
+    let html = crate::html::render(&report);
+    assert!(html.contains("This scan was incomplete"));
+    assert!(!html.contains("<h2>Notes</h2>"));
+}

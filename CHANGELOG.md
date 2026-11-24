@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.15.2 (2026-11-24)
+
+- JSON and HTML reports list every finding. Before, a scan without `--full`
+  kept 10 findings per category in every output. Now only the terminal
+  report is capped.
+- The HTML report shows its "incomplete" warning whenever a scan is
+  incomplete. Before, the warning was missing when the only gap was a report
+  folder that could not be read, because that gap leaves no note.
+- `mactriage security` without sudo marks the report incomplete. Six checks
+  need root, so a clean unprivileged audit is UNKNOWN and exits 50. Before,
+  it read HEALTHY and exited 0.
+
 ## 0.15.1 (2026-11-23)
 
 - Correction to 0.15.0: the release note said every summary was checked

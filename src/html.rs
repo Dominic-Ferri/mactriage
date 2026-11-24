@@ -139,17 +139,17 @@ pub fn render(report: &Report) -> String {
         )
     };
 
-    // Notes carry scan-completeness warnings (timeout, log failure, truncation).
-    // Without them an incomplete HTML report can still read as a clean bill of health.
-    let notes = if report.notes.is_empty() {
+    // An incomplete scan must never read as a clean bill of health, even when
+    // the only gap left no note (a report folder that could not be read).
+    let banner = if report.complete {
         String::new()
     } else {
-        let banner = if report.complete {
-            String::new()
-        } else {
-            "<p class=\"incomplete\">⚠ This scan was incomplete — findings below may be missing.</p>"
-                .to_string()
-        };
+        "<p class=\"incomplete\">⚠ This scan was incomplete — findings below may be missing.</p>"
+            .to_string()
+    };
+    let notes = if report.notes.is_empty() {
+        banner
+    } else {
         format!(
             "<h2>Notes</h2>{banner}<ul>{}</ul>",
             report

@@ -62,7 +62,8 @@ pub struct ScanOpts {
     #[arg(long)]
     pub no_log: bool,
 
-    /// Don't cap findings per category (default cap: 10)
+    /// Don't cap terminal findings per category (default cap: 10). JSON and
+    /// HTML reports always list every finding.
     #[arg(long)]
     pub full: bool,
 
@@ -546,7 +547,7 @@ pub fn collect_scan(
     if let Some(min) = opts.min_severity {
         report.findings.retain(|f| f.severity >= min);
     }
-    report.finalize(if opts.full { None } else { Some(10) });
+    report.finalize(None);
     report.stats.duration_ms = started.elapsed().as_millis() as u64;
     prog.finish();
     Ok(ScanRun { report, cancelled })
@@ -681,6 +682,8 @@ pub fn collect_security(prog: &dyn Reporter) -> Report {
     security::supersede_profile_count(&mut report.findings, &sec.findings);
     report.findings.extend(sec.findings);
     if !root {
+        // Six checks need root, so an unprivileged audit is never complete.
+        report.complete = false;
         report.notes.push(
             "run with sudo for full coverage (computer-level profiles, Bootstrap Token, Jamf \
              server check, Background Task Management, other users' listeners)"

@@ -47,8 +47,8 @@ impl Profile {
 
     fn worker_args(self) -> Vec<&'static str> {
         match self {
-            Self::Full => vec!["__worker", "scan", "--full"],
-            Self::Fast => vec!["__worker", "scan", "--no-log", "--full"],
+            Self::Full => vec!["__worker", "scan"],
+            Self::Fast => vec!["__worker", "scan", "--no-log"],
             Self::Snapshot => vec!["__worker", "snapshot"],
         }
     }
@@ -704,12 +704,5 @@ mod tests {
         app.handle_key(key(KeyCode::PageDown));
         app.handle_key(key(KeyCode::Right));
         assert_eq!(app.result_scroll, 0);
-    }
-
-    #[test]
-    fn scan_profiles_request_uncapped_findings() {
-        for profile in [Profile::Full, Profile::Fast] {
-            assert!(profile.worker_args().contains(&"--full"));
-        }
     }
 }
