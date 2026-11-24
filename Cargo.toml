@@ -12,7 +12,7 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 plist = "1"
-comfy-table = "7"
+comfy-table = "8"
 ratatui = { version = "0.30", default-features = false, features = ["crossterm"] }
 
 [profile.release]
