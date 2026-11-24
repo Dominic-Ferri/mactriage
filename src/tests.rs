@@ -3241,3 +3241,23 @@ fn pagein_failures_in_two_programs_point_at_storage() {
     assert_eq!(s.evidence[0].excerpt, "Mail, git");
     assert_eq!(two.iter().filter(|f| f.rule_id == "file.crash").count(), 2);
 }
+
+#[test]
+fn escape_sequences_in_a_crash_report_never_reach_the_finding_text() {
+    let body = serde_json::json!({
+        "procName": "evil\u{1b}]0;owned\u{7}\u{1b}[2J",
+        "exception": {"type": "EXC_BAD_ACCESS\u{1b}[31m", "signal": "SIGSEGV"},
+        "termination": {"namespace": "SIGNAL", "code": 11, "indicator": "x\u{1b}[0m"}
+    });
+    let f = scan_one(
+        "mactriage-test-escape",
+        "evil-2026-11-20-100000.ips",
+        &crash_ips("evil", body),
+    );
+    let c = f.iter().find(|f| f.rule_id == "file.crash").expect("crash");
+    let all = format!(
+        "{} {} {:?} {:?}",
+        c.summary, c.detail, c.next_step, c.evidence
+    );
+    assert!(!all.contains('\u{1b}') && !all.contains('\u{7}'), "{all}");
+}

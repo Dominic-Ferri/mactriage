@@ -772,6 +772,45 @@ mod tests {
     }
 
     #[test]
+    fn finding_detail_shows_apple_documentation() {
+        let backend = TestBackend::new(160, 50);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(false);
+        let mut f = Finding::new("file.crash", Severity::Medium, "crash", "app crashed");
+        f.references.push(crate::report::Reference {
+            title: "EXC_BAD_ACCESS".into(),
+            url: "https://developer.apple.com/documentation/xcode/exc_bad_access".into(),
+            apple_says: "A bad memory access ended the process.".into(),
+        });
+        app.report = Some(Report {
+            schema_version: SCHEMA_VERSION,
+            tool: TOOL_NAME.into(),
+            tool_version: TOOL_VERSION.into(),
+            generated_at: Utc::now(),
+            scan_window: "test window".into(),
+            window_since: None,
+            window_until: None,
+            complete: true,
+            host: app.host.clone(),
+            vitals: Vec::new(),
+            findings: vec![f],
+            skipped: Vec::new(),
+            notes: Vec::new(),
+            recovery: None,
+            stats: Stats::default(),
+            log_events: vec![],
+            coverage: Vec::new(),
+        });
+        app.screen = Screen::Results;
+        app.result_tab = crate::tui::app::ResultTab::Findings;
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let visible = terminal.backend().to_string();
+        assert!(visible.contains("Apple documentation"), "{visible}");
+        assert!(visible.contains("A bad memory access ended the process."));
+        assert!(visible.contains("developer.apple.com/documentation/xcode/exc_bad_access"));
+    }
+
+    #[test]
     fn summary_displays_every_actionable_finding_and_next_step() {
         let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();

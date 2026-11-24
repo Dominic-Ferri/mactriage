@@ -451,12 +451,9 @@ fn parse_panic_body(path: &Path, body: &str, ts: Option<DateTime<Utc>>) -> Findi
         .and_then(|v| v.get("caused_by").and_then(|c| c.as_str()))
         .map(String::from);
 
-    let first_line = panic_string
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("kernel panic")
-        .trim()
-        .to_string();
+    let first_line = Some(one_line(&panic_string, 300))
+        .filter(|l| !l.is_empty())
+        .unwrap_or_else(|| "kernel panic".into());
 
     let mut kexts: Vec<String> = Vec::new();
     if let Some(idx) = panic_string.find("Kernel Extensions in backtrace") {
@@ -987,17 +984,21 @@ fn parse_crash_309(
         .get("procName")
         .and_then(|p| p.as_str())
         .or_else(|| header.get("app_name").and_then(|a| a.as_str()))
-        .unwrap_or("unknown")
-        .to_string();
+        .map(|n| one_line(n, 120))
+        .unwrap_or_else(|| "unknown".into());
     let exc_type = v
         .pointer("/exception/type")
         .and_then(|t| t.as_str())
-        .unwrap_or("unknown exception");
-    let signal = v.pointer("/exception/signal").and_then(|s| s.as_str());
+        .map(|t| one_line(t, 80))
+        .unwrap_or_else(|| "unknown exception".into());
+    let signal = v
+        .pointer("/exception/signal")
+        .and_then(|s| s.as_str())
+        .map(|s| one_line(s, 40));
     let term = v
         .pointer("/termination/indicator")
         .and_then(|t| t.as_str())
-        .map(String::from);
+        .map(|t| one_line(t, 200));
 
     let mut excerpt = format!("exception {exc_type}");
     if let Some(sig) = signal {

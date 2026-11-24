@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.15.1 (2026-11-23)
+
+- Correction to 0.15.0: the release note said every summary was checked
+  against its page. The check that ran was mechanical for the quoted passage
+  behind each summary; the summaries themselves were reviewed by hand. This
+  release rewrites the summaries that said more than their passage (automatic
+  updates, Wi-Fi security type, boot arguments, admin accounts, sleep/wake
+  failure, startup screens, shutdown stalls, the RUNNINGBOARD namespace) and
+  the ones that described the page instead of saying what it says.
+  `correlate.crash_loop` now cites Apple's article on apps that quit
+  unexpectedly instead of the article on a Mac that restarts.
+- Correction to 0.15.0: control characters were only removed from the newly
+  decoded crash fields. The process name, exception type, signal and
+  termination text of a crash report, and the panic headline, are now
+  cleaned too, and a test checks that an escape sequence in a crash report
+  never reaches the finding.
+- The dashboard's Apple documentation section is covered by a test.
+
 ## 0.15.0 (2026-11-23)
 
 - Every finding now lists the official Apple documentation behind it: the page
