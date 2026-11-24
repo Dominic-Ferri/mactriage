@@ -48,6 +48,12 @@
   messages inside the binary named the builder's cargo and rustup folders.
   The build now maps those paths to `/cargo` and `/rustup`, and it fails when
   the binary still contains the home path.
+- The repository gets continuous integration on a macOS runner: format, lint
+  and tests on every push and pull request. Dependabot checks for cargo and
+  GitHub Actions updates every week, and a `SECURITY.md` names the private
+  reporting link.
+- `rustix` is updated from 1.1.4 to 1.1.6, the version that fixes an unsound
+  xattr function (RUSTSEC-2026-0486).
 
 ## 0.15.1 (2026-11-23)
 

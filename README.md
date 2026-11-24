@@ -40,6 +40,8 @@ cargo install --path .
 
 This command installs the binary to `~/.cargo/bin/mactriage`.
 
+Each release on GitHub also carries the universal command-line binary `mactriage` and a SHA-256 file. Check the download before you run it: `shasum -a 256 -c mactriage-0.15.2.sha256`. A browser download carries a quarantine mark, and macOS refuses to run a binary that is not notarized, so remove the mark after the check: `xattr -d com.apple.quarantine mactriage`.
+
 ### Commands to start with
 
 ```
@@ -374,7 +376,7 @@ Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads 
 | `scan.rs` | Runs the stages for full, snapshot, security, and watch scans |
 | `files.rs` | Crash, panic, hang, and jetsam report parsing |
 | `logscan.rs` | The unified-log pass and its classifiers |
-| `host.rs`, `power.rs`, `hardware.rs` | Vitals, battery, charger, sleep blockers, SSD, input devices |
+| `host.rs`, `power.rs`, `hardware.rs`, `lidangle.rs` | Vitals, battery, charger, sleep blockers, SSD, input devices, lid angle |
 | `netcheck.rs`, `storage.rs` | Network health, snapshots, Time Machine |
 | `audit.rs`, `security.rs` | Launch items, kexts, install history, posture, security audit |
 | `correlate.rs` | Joins findings into crash loops, stories, and root causes |
@@ -383,6 +385,8 @@ Set `MACTRIAGE_REPORTS_DIR` to a folder of sample reports. mactriage then reads 
 | `baseline.rs`, `watch.rs` | Baseline and diff, background watch |
 | `protocol.rs`, `progress.rs` | Dashboard-to-worker channel, progress reports |
 | `rules.rs` | The rule catalog that `mactriage rules` shows |
+| `apple_docs.rs`, `apple_docs_data.rs` | The Apple documentation behind each finding |
+| `tui/` | The dashboard and its field trace |
 
 </details>
 
@@ -408,7 +412,7 @@ There are 115 rules. The table splits the 40 security rules into three rows. `ma
 
 ## History
 
-The v0.1.0 source is lost. v0.2.0 is a full rewrite that kept the same rule IDs and command line. v0.3.0 fixed trust and correctness problems. Later versions added the dashboard, the recovery assessment, the security audit, and hardware checks. Since 0.11.1, most changes tune rules that raised false alarms on real Macs. Version 0.12.0 hardened the security audit and the app launchers. Version 0.13.0 checks the keyboard/trackpad controller and the lid angle sensor. Version 0.14.0 reads the unified log newest first, reports which recovery-critical sources were read, and checks what could block an erase. See [CHANGELOG.md](CHANGELOG.md) for the reason behind each change.
+The v0.1.0 source is lost. v0.2.0 is a full rewrite that kept the same rule IDs and command line. v0.3.0 fixed trust and correctness problems. Later versions added the dashboard, the recovery assessment, the security audit, and hardware checks. Since 0.11.1, most changes tune rules that raised false alarms on real Macs. Version 0.12.0 hardened the security audit and the app launchers. Version 0.13.0 checks the keyboard/trackpad controller and the lid angle sensor. Version 0.14.0 reads the unified log newest first, reports which recovery-critical sources were read, and checks what could block an erase. Version 0.15.0 lists the Apple documentation behind every finding and decodes crash and panic reports field by field. Version 0.15.1 corrects the summaries of that documentation and cleans control characters out of crash text. See [CHANGELOG.md](CHANGELOG.md) for the reason behind each change.
 
 ## License
 
