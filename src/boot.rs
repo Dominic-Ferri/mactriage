@@ -86,8 +86,8 @@ pub fn scan(categories: &HashSet<Category>, window_start: DateTime<Utc>) -> Vec<
             .into();
         f.next_step = Some(
             "Watch the next boot verbosely (hold Cmd-V), or inspect this one: \
-             `log show --start '<boot time>' --last-boot --style compact | head -200` and look \
-             for multi-second gaps."
+             `log show --last boot --predicate 'process == \"loginwindow\"' --style compact | \
+             head -200` and look for multi-second gaps."
                 .into(),
         );
         f.evidence.push(Evidence {

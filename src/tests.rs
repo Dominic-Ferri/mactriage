@@ -9,6 +9,8 @@ fn parse_window_units() {
     assert_eq!(util::parse_window("2w").unwrap().as_secs(), 1209600);
     assert!(util::parse_window("abc").is_none());
     assert!(util::parse_window("").is_none());
+    // The last byte of "6é" is inside é: a usage error, not a panic.
+    assert!(util::parse_window("6é").is_none());
 }
 
 #[test]
@@ -338,6 +340,29 @@ fn shutdown_code_classification() {
     assert_eq!(shutdown_severity(0).unwrap().0, Severity::Medium);
     assert_eq!(shutdown_severity(3).unwrap().0, Severity::High);
     assert_eq!(shutdown_severity(-9999).unwrap().0, Severity::Medium);
+}
+
+#[test]
+fn shutdown_cause_reports_the_newest_abnormal_hit() {
+    use crate::logscan::latest_abnormal;
+    fn lines(codes: &[i64]) -> Vec<String> {
+        codes
+            .iter()
+            .map(|c| format!("Previous shutdown cause: {c}"))
+            .collect()
+    }
+    // Oldest first. A normal restart after a watchdog reset must not hide it.
+    let hits = lines(&[5, -61, 5]);
+    let refs: Vec<&str> = hits.iter().map(String::as_str).collect();
+    assert_eq!(latest_abnormal(&refs), Some(refs[1]));
+    // Only normal shutdowns: no finding.
+    let hits = lines(&[5, 7]);
+    let refs: Vec<&str> = hits.iter().map(String::as_str).collect();
+    assert_eq!(latest_abnormal(&refs), None);
+    // The newest abnormal one wins when there are several.
+    let hits = lines(&[5, 3, 5]);
+    let refs: Vec<&str> = hits.iter().map(String::as_str).collect();
+    assert_eq!(latest_abnormal(&refs), Some(refs[1]));
 }
 
 // A tight burst of crashes is a High crash loop; the same count spread across

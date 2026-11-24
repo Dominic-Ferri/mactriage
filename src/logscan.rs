@@ -642,10 +642,11 @@ fn summarize(rule: &LogRule, hits: &[Hit]) -> Option<Finding> {
     let count = hits.len() as u32;
     let first = hits.iter().filter_map(|h| h.ts).min();
     let last = hits.iter().filter_map(|h| h.ts).max();
-    let sample = &hits[hits.len() - 1];
-
     let (severity, summary, detail, next_step): (Severity, String, String, String) = match rule.id {
-        "log.shutdown_cause" => shutdown_cause(sample)?,
+        "log.shutdown_cause" => {
+            let messages: Vec<&str> = hits.iter().map(|h| h.message.as_str()).collect();
+            shutdown_cause(latest_abnormal(&messages)?)?
+        }
         "log.crash_reported" => (
             Severity::Info,
             format!("Crash reporter fired {count} time(s)"),
@@ -839,13 +840,28 @@ fn summarize(rule: &LogRule, hits: &[Hit]) -> Option<Finding> {
     Some(f)
 }
 
+/// The code of one "Previous shutdown cause: N" message.
+pub(crate) fn shutdown_code(message: &str) -> Option<i64> {
+    message.rsplit(':').next()?.trim().parse().ok()
+}
+
+/// The newest hit with an abnormal cause: a normal restart after a hard one
+/// must not hide it.
+pub(crate) fn latest_abnormal<'a>(messages: &[&'a str]) -> Option<&'a str> {
+    messages
+        .iter()
+        .rev()
+        .copied()
+        .find(|m| shutdown_code(m).and_then(shutdown_severity).is_some())
+}
+
 /// Previous-shutdown-cause codes; the interesting ones mean the machine died.
-fn shutdown_cause(sample: &Hit) -> Option<(Severity, String, String, String)> {
-    let code: i64 = sample.message.rsplit(':').next()?.trim().parse().ok()?;
+fn shutdown_cause(message: &str) -> Option<(Severity, String, String, String)> {
+    let code = shutdown_code(message)?;
     let (sev, meaning) = shutdown_severity(code)?;
     Some((
         sev,
-        format!("Last shutdown was abnormal: {meaning} (code {code})"),
+        format!("Abnormal shutdown recorded: {meaning} (code {code})"),
         format!(
             "macOS recorded shutdown cause {code}: {meaning}. Anything other than a normal \
              shutdown (5) means the machine lost power or the OS was killed."

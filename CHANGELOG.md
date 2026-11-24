@@ -11,6 +11,14 @@
 - `mactriage security` without sudo marks the report incomplete. Six checks
   need root, so a clean unprivileged audit is UNKNOWN and exits 50. Before,
   it read HEALTHY and exited 0.
+- A window that ends in a multi-byte character, such as `--last 6é`, is a
+  usage error with exit 2. Before, it crashed with exit 101.
+- `log.shutdown_cause` reports the most recent abnormal shutdown in the
+  window. Before, one normal restart inside the window hid an earlier
+  watchdog or thermal shutdown.
+- Two texts are corrected. The slow-boot advice named a `log show` option
+  that does not exist. Memory pressure level 10 (warning and low swap) read
+  "critical" at Medium severity.
 
 ## 0.15.1 (2026-11-23)
 

@@ -223,7 +223,7 @@ fn memory(r: &mut SnapshotResult) {
             "memory",
             &format!(
                 "Live memory pressure is at {} level",
-                if level >= 4 { "critical" } else { "warning" }
+                if critical { "critical" } else { "warning" }
             ),
         );
         f.detail = "The kernel is actively compressing/paging to keep up right now. Apps will \

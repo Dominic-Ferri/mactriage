@@ -228,7 +228,9 @@ pub fn stream_lines(
 /// Parse "30m" / "6h" / "24h" / "3d" / "2w" into a Duration.
 pub fn parse_window(s: &str) -> Option<Duration> {
     let s = s.trim();
-    let (num, unit) = s.split_at(s.len().checked_sub(1)?);
+    // The last byte may sit inside a multi-byte character ("6é").
+    let split = s.len().checked_sub(1).filter(|&i| s.is_char_boundary(i))?;
+    let (num, unit) = s.split_at(split);
     let n: u64 = num.parse().ok()?;
     let secs = match unit {
         "s" => n,
