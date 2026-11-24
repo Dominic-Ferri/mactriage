@@ -41,6 +41,9 @@
   fix for a dashboard freeze on macOS 26.6.2 that has no root cause yet. The
   trace now records the worker's process group, so the next field trace shows
   whether a freeze still happens.
+- `sudo mactriage baseline` saves to the folder of the account that ran sudo
+  and hands the files to that account. Before, it saved under root's home
+  folder, so a later plain `mactriage diff` reported no baseline.
 
 ## 0.15.1 (2026-11-23)
 

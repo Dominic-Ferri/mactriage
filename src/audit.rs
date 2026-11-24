@@ -87,7 +87,7 @@ fn launch_dirs(root: bool) -> Vec<PathBuf> {
 }
 
 /// Home folder of a local account, from its directory record.
-fn user_home(user: &str) -> Option<PathBuf> {
+pub(crate) fn user_home(user: &str) -> Option<PathBuf> {
     let out = run(
         "/usr/bin/dscl",
         &[".", "-read", &format!("/Users/{user}"), "NFSHomeDirectory"],

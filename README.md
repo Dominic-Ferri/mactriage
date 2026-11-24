@@ -310,7 +310,7 @@ The dashboard keeps the cached password fresh while it is open. If the password 
 <details>
 <summary><b>Baseline, diff, and watch</b></summary>
 
-`mactriage baseline` saves an inventory of the Mac to `~/Library/Application Support/mactriage/baseline.json`. The inventory holds loaded kexts, launch items, security posture, disk use, and hardware wear. Save a baseline while the Mac works. If the Mac breaks later, `mactriage diff` shows what changed since then.
+`mactriage baseline` saves an inventory of the Mac to `~/Library/Application Support/mactriage/baseline.json`. The inventory holds loaded kexts, launch items, security posture, disk use, and hardware wear. Save a baseline while the Mac works. If the Mac breaks later, `mactriage diff` shows what changed since then. With sudo, the baseline still goes to the folder of the account that ran sudo, so a later `mactriage diff` finds it.
 
 `mactriage watch install` adds a LaunchAgent for your user (no sudo). By default, it runs a fast scan of report files and live vitals every 6 hours. It compares the result with the last run. It sends a notification for each new finding at or above High. `--interval` and `--min-severity` change these two values.
 

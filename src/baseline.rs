@@ -33,10 +33,21 @@ pub struct Baseline {
 }
 
 pub fn baseline_path() -> PathBuf {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
+    // Under sudo HOME is root's: keep the baseline where a later plain
+    // `mactriage diff` looks for it.
+    let home = invoking_user()
+        .and_then(|u| crate::audit::user_home(&u))
+        .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
         .unwrap_or_default();
     home.join("Library/Application Support/mactriage/baseline.json")
+}
+
+/// The account that ran sudo, when mactriage runs as root.
+fn invoking_user() -> Option<String> {
+    crate::util::is_root()
+        .then(|| std::env::var("SUDO_USER").ok())
+        .flatten()
+        .filter(|u| !u.is_empty())
 }
 
 pub fn capture(root: bool) -> Baseline {
@@ -89,11 +100,46 @@ pub fn capture(root: bool) -> Baseline {
 }
 
 pub fn save(b: &Baseline) -> std::io::Result<PathBuf> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
     let path = baseline_path();
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    std::fs::write(&path, serde_json::to_string_pretty(b)?)?;
+    // Under sudo the folder belongs to a user, so a planted symlink must not
+    // be followed. 0x100 is O_NOFOLLOW on macOS.
+    let json = serde_json::to_string_pretty(b)?;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .custom_flags(0x100)
+        .open(&path)?;
+    file.write_all(json.as_bytes())?;
+    if let Some(user) = invoking_user() {
+        // Hand the folder and the file to that user: a later plain run must
+        // be able to replace the baseline.
+        let targets = path
+            .parent()
+            .map(PathBuf::from)
+            .into_iter()
+            .chain([path.clone()]);
+        for target in targets {
+            let target = target.display().to_string();
+            let owned = crate::util::capture(
+                "/usr/sbin/chown",
+                &[&user, &target],
+                crate::util::RUN_TIMEOUT,
+            )
+            .is_some_and(|out| out.success);
+            if !owned {
+                return Err(std::io::Error::other(format!(
+                    "could not give {target} to {user}"
+                )));
+            }
+        }
+    }
     Ok(path)
 }
 
