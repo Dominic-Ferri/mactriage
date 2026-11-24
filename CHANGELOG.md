@@ -54,6 +54,9 @@
   reporting link.
 - `rustix` is updated from 1.1.4 to 1.1.6, the version that fixes an unsound
   xattr function (RUSTSEC-2026-0486).
+- Each GitHub release carries the universal `mactriage` binary and a SHA-256
+  file. The binary is not notarized, so remove the quarantine mark after you
+  check the checksum.
 
 ## 0.15.1 (2026-11-23)
 
