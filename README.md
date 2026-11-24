@@ -40,7 +40,7 @@ cargo install --path .
 
 This command installs the binary to `~/.cargo/bin/mactriage`.
 
-Each release on GitHub also carries the universal command-line binary `mactriage` and a SHA-256 file. Check the download before you run it: `shasum -a 256 -c mactriage-0.15.2.sha256`. A browser download carries a quarantine mark, and macOS refuses to run a binary that is not notarized, so remove the mark after the check: `xattr -d com.apple.quarantine mactriage`.
+Each release on GitHub also carries the universal command-line binary `mactriage` and a SHA-256 file. Check the download before you run it: `shasum -a 256 -c mactriage-0.15.2.sha256`. Then make it executable: `chmod +x mactriage`. A browser download also carries a quarantine mark, and macOS refuses to run a binary that is not notarized, so remove that mark too: `xattr -d com.apple.quarantine mactriage`.
 
 ### Commands to start with
 
