@@ -32,7 +32,7 @@ pub const RULES: &[RuleInfo] = &[
     RuleInfo { id: "log.thermal", category: "thermal", severity: "varies", source: "unified log", detects: "Thermal pressure raised or CPU speed-limited, counted as episodes (all-clear records ignored)" },
     RuleInfo { id: "log.io_errors", category: "i/o", severity: "varies", source: "unified log", detects: "Disk I/O errors, APFS errors, filesystem checks" },
     RuleInfo { id: "log.gpu_reset", category: "gpu", severity: "varies", source: "unified log", detects: "GPU hangs/resets recorded by the driver stack" },
-    RuleInfo { id: "log.launchd_services", category: "services", severity: "varies", source: "unified log", detects: "launchd services exiting abnormally or crash-looping" },
+    RuleInfo { id: "log.launchd_services", category: "services", severity: "varies", source: "unified log", detects: "launchd services that crashed or were held back for restarting too fast; names the service" },
     RuleInfo { id: "log.spotlight", category: "spotlight", severity: "varies", source: "unified log", detects: "Spotlight indexer faults (runaway indexing degrades disk/CPU)" },
     RuleInfo { id: "log.kext", category: "services", severity: "varies", source: "unified log", detects: "Kernel extension load failures / rejections" },
     RuleInfo { id: "log.usb_tb", category: "i/o", severity: "varies", source: "unified log", detects: "USB / Thunderbolt errors (over-current, link failures)" },

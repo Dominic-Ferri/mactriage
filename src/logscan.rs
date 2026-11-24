@@ -93,13 +93,8 @@ pub const LOG_RULES: &[LogRule] = &[
         id: "log.launchd_services",
         category: Category::Services,
         category_str: "services",
-        predicate: r#"(process == "launchd" AND (eventMessage CONTAINS "exited with abnormal" OR eventMessage CONTAINS "throttling respawn" OR eventMessage CONTAINS "Crashed:"))"#,
-        matches: |p, m| {
-            p == "launchd"
-                && (m.contains("exited with abnormal")
-                    || m.contains("throttling respawn")
-                    || m.contains("Crashed:"))
-        },
+        predicate: r#"(process == "launchd" AND (eventMessage CONTAINS "exited with abnormal" OR eventMessage CONTAINS "throttling respawn" OR eventMessage CONTAINS "Crashed:" OR eventMessage CONTAINS "exited due to SIG" OR eventMessage CONTAINS "Pushing respawn out"))"#,
+        matches: |p, m| p == "launchd" && (launchd_crash(m) || launchd_respawn(m)),
     },
     LogRule {
         id: "log.spotlight",
@@ -355,6 +350,8 @@ pub(crate) fn software_update_failure(process: &str, message: &str) -> bool {
 struct Hit {
     ts: Option<DateTime<Utc>>,
     process: String,
+    /// The record's subsystem: launchd logs under the service's label.
+    subsystem: String,
     message: String,
 }
 
@@ -548,11 +545,17 @@ pub fn scan(
                 {
                     return;
                 }
+                let subsystem = v
+                    .get("subsystem")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 for (i, rule) in rules.iter().enumerate() {
                     if (rule.matches)(&process, message) {
                         per_rule[i].push(Hit {
                             ts,
                             process: process.clone(),
+                            subsystem,
                             message: message.chars().take(500).collect(),
                         });
                         break;
@@ -697,11 +700,20 @@ fn summarize(rule: &LogRule, hits: &[Hit]) -> Option<Finding> {
         ),
         "log.launchd_services" => {
             let procs = top_processes(hits, 3);
+            let crashed = hits.iter().any(|h| launchd_crash(&h.message));
+            let severity = if count > 20 {
+                Severity::High
+            } else if !crashed && count <= 2 {
+                // One or two held-back restarts with no crash are routine.
+                Severity::Low
+            } else {
+                Severity::Medium
+            };
             (
-                if count > 20 { Severity::High } else { Severity::Medium },
-                format!("launchd services exiting abnormally ({count} events)"),
+                severity,
+                format!("launchd services crashed or kept respawning ({count} events)"),
                 format!(
-                    "Background services crashed or were throttled for respawning too fast. \
+                    "Background services crashed or were held back for restarting too fast. \
                      Most active: {procs}. A crash-looping service burns CPU and never delivers \
                      whatever it was supposed to do."
                 ),
@@ -1176,11 +1188,40 @@ pub fn keychain_verdict(messages: &[&str]) -> (Severity, String, String) {
     (severity, detail, next)
 }
 
+/// A launchd line that shows a service crash. SIGKILL, SIGTERM and `exit(n)`
+/// do not count: supervisors such as mds send SIGKILL on a healthy Mac.
+pub(crate) fn launchd_crash(m: &str) -> bool {
+    m.contains("exited with abnormal")
+        || m.contains("Crashed:")
+        || [
+            "SIGSEGV", "SIGABRT", "SIGBUS", "SIGILL", "SIGTRAP", "SIGFPE",
+        ]
+        .iter()
+        .any(|s| m.contains(&format!("exited due to {s}")))
+}
+
+/// launchd held a service back because it exited too soon: a restart loop.
+/// The first phrase is the macOS 27 wording, the second the older one.
+pub(crate) fn launchd_respawn(m: &str) -> bool {
+    m.contains("Pushing respawn out") || m.contains("throttling respawn")
+}
+
+/// The service a launchd line is about. launchd logs under the service's
+/// subsystem, "gui/501/com.example.agent [8929]"; labels can hold spaces.
+pub(crate) fn service_label<'a>(subsystem: &'a str, fallback: &'a str) -> &'a str {
+    let tail = subsystem.rsplit('/').next().unwrap_or("");
+    if tail.is_empty() {
+        return fallback;
+    }
+    tail.rsplit_once(" [").map_or(tail, |(label, _)| label)
+}
+
 fn top_processes(hits: &[Hit], n: usize) -> String {
     let mut counts: std::collections::HashMap<&str, u32> = Default::default();
     for h in hits {
-        // launchd messages name the service; fall back to logging process
-        *counts.entry(h.process.as_str()).or_insert(0) += 1;
+        *counts
+            .entry(service_label(&h.subsystem, &h.process))
+            .or_insert(0) += 1;
     }
     let mut v: Vec<_> = counts.into_iter().collect();
     v.sort_by_key(|&(_, c)| std::cmp::Reverse(c));

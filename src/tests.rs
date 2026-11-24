@@ -3349,3 +3349,45 @@ fn html_report_warns_when_incomplete_without_notes() {
     assert!(html.contains("This scan was incomplete"));
     assert!(!html.contains("<h2>Notes</h2>"));
 }
+
+#[test]
+fn launchd_rule_counts_crashes_and_respawn_pushes_only() {
+    use crate::logscan::{launchd_crash as crash, launchd_respawn as respawn, service_label};
+    // Real macOS 27 launchd messages, plus the older wordings.
+    assert!(crash(
+        "exited due to SIGSEGV | sent by exc handler[5662], ran for 120ms"
+    ));
+    assert!(crash(
+        "exited due to SIGABRT | sent by exc handler[5662], ran for 120ms"
+    ));
+    assert!(crash("Service exited with abnormal code: 1"));
+    assert!(crash("Crashed: com.example.agent"));
+    assert!(respawn(
+        "Service only ran for 0 seconds. Pushing respawn out by 10 seconds."
+    ));
+    assert!(respawn("throttling respawn: Will start in 10 seconds"));
+    // Negative controls: routine exits on a healthy Mac.
+    for routine in [
+        "exited due to SIGKILL | sent by mds[694], ran for 42090ms",
+        "exited due to SIGTERM | sent by loginwindow[1], ran for 9ms",
+        "exited due to exit(0), ran for 161ms",
+        "exited due to exit(78)",
+        "service state: exited",
+    ] {
+        assert!(!crash(routine) && !respawn(routine), "{routine}");
+    }
+    // The label is the text after the last slash, without the pid.
+    assert_eq!(
+        service_label("gui/501/com.example.agent", "launchd"),
+        "com.example.agent"
+    );
+    assert_eq!(
+        service_label("gui/501/com.example.agent [8929]", "launchd"),
+        "com.example.agent"
+    );
+    assert_eq!(
+        service_label("system/com.jamfsoftware.task.Every 15 Minutes", "launchd"),
+        "com.jamfsoftware.task.Every 15 Minutes"
+    );
+    assert_eq!(service_label("", "launchd"), "launchd");
+}

@@ -19,6 +19,14 @@
 - Two texts are corrected. The slow-boot advice named a `log show` option
   that does not exist. Memory pressure level 10 (warning and low swap) read
   "critical" at Medium severity.
+- `log.launchd_services` matches what macOS 27 writes and names the service.
+  macOS 27 no longer writes "exited with abnormal code" or "throttling
+  respawn". It writes "exited due to SIGSEGV" and "Pushing respawn out by 10
+  seconds", and it puts the service label in the record's subsystem field
+  instead of the message. The rule counted nothing on macOS 27. It now
+  counts crash signals and held-back restarts. SIGKILL, SIGTERM and a normal
+  exit code do not count, because supervisors such as mds send them on a
+  healthy Mac. One or two held-back restarts without a crash are Low.
 
 ## 0.15.1 (2026-11-23)
 
