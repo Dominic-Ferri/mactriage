@@ -278,6 +278,7 @@ Also give your terminal app Full Disk Access (System Settings > Privacy & Securi
 - **Certificates:** a certificate with a name like the Jamf CA is Info only when it matches a certificate from an installed profile. Without that match, it is Low.
 - **`/etc/hosts`:** a block of an Apple update, revocation, or notarization host is High. A block of any other Apple host is Medium.
 - **Failed tools:** sometimes a tool such as `csrutil` or `security` gives no usable answer. Then the check shows as Skipped. It never shows as a pass.
+- **Wi-Fi security:** read from `ipconfig getsummary`. On macOS 27 that tool answers UNRECOGNIZED, so the audit asks System Profiler instead, which takes about 12 seconds.
 
 Every system tool runs by its full path, and each tool has a time limit.
 

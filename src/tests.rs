@@ -1237,6 +1237,36 @@ fn wifi_security_classification() {
     assert_eq!(p("  SSID : x\n"), W::Unknown);
     assert_eq!(c("SOMETHING_NEW"), W::Unknown);
     assert_eq!(p("  State : Inactive\n"), W::NotConnected);
+    // Real macOS 27 answer: unreadable from ipconfig, so the audit falls back
+    // to System Profiler.
+    use crate::security::parse_wifi_security_profiler as prof;
+    assert_eq!(p("  SSID : x\n  Security : UNRECOGNIZED\n"), W::Unknown);
+    let profiler = |mode: &str| {
+        serde_json::json!({"SPAirPortDataType": [{"spairport_airport_interfaces": [{
+            "_name": "en0",
+            "spairport_current_network_information": {
+                "_name": "Cafe",
+                "spairport_security_mode": mode
+            }
+        }]}]})
+        .to_string()
+    };
+    assert_eq!(
+        prof(&profiler("spairport_security_mode_wpa3_personal"), "en0"),
+        W::Secure("wpa3 personal".into())
+    );
+    // Some values are misspelled "pairport_…" on macOS 27; the suffix decides.
+    assert_eq!(
+        prof(&profiler("pairport_security_mode_none"), "en0"),
+        W::Open
+    );
+    // An interface with no current network, or one that is not listed.
+    let idle = r#"{"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"en0"}]}]}"#;
+    assert_eq!(prof(idle, "en0"), W::NotConnected);
+    let other = r#"{"SPAirPortDataType":[{"spairport_airport_interfaces":[{"_name":"awdl0"}]}]}"#;
+    assert_eq!(prof(other, "en0"), W::NotConnected);
+    // A failed tool gives no JSON: unknown, never secure.
+    assert_eq!(prof("", "en0"), W::Unknown);
 }
 
 #[test]

@@ -124,6 +124,46 @@ pub fn parse_wifi_security(summary: &str) -> WifiSecurity {
     }
 }
 
+/// Parse `system_profiler SPAirPortDataType -json -detailLevel basic`, the
+/// fallback for macOS 27, where `ipconfig getsummary` answers UNRECOGNIZED.
+/// The interface named `dev` carries `spairport_current_network_information`
+/// with a key such as `spairport_security_mode_wpa3_personal`.
+pub fn parse_wifi_security_profiler(json: &str, dev: &str) -> WifiSecurity {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else {
+        return WifiSecurity::Unknown;
+    };
+    let current = v["SPAirPortDataType"].as_array().and_then(|cards| {
+        cards.iter().find_map(|c| {
+            c["spairport_airport_interfaces"]
+                .as_array()?
+                .iter()
+                .find(|i| i["_name"] == dev)
+                .map(|i| &i["spairport_current_network_information"])
+        })
+    });
+    let Some(current) = current else {
+        return WifiSecurity::NotConnected;
+    };
+    let mode = current.as_object().and_then(|m| {
+        m.iter()
+            .find(|(k, _)| k.contains("security_mode"))
+            .and_then(|(_, v)| v.as_str())
+    });
+    match mode {
+        // `_name` is the SSID: associated without a mode is unknown, not off.
+        None if current["_name"].as_str().is_some_and(|s| !s.is_empty()) => WifiSecurity::Unknown,
+        None => WifiSecurity::NotConnected,
+        // "…security_mode_wpa3_personal" reads as "wpa3 personal" to the classifier.
+        Some(mode) => classify_wifi_security(
+            &mode
+                .rsplit("security_mode_")
+                .next()
+                .unwrap_or(mode)
+                .replace('_', " "),
+        ),
+    }
+}
+
 pub fn classify_wifi_security(raw: &str) -> WifiSecurity {
     let s = raw.to_ascii_uppercase();
     if s.is_empty() {
@@ -182,6 +222,19 @@ fn wifi(r: &mut SecurityResult) {
         WifiSecurity::Unknown
     } else {
         parse_wifi_security(&summary)
+    };
+    // macOS 27 answers UNRECOGNIZED here; System Profiler still tells.
+    let state = if state == WifiSecurity::Unknown {
+        parse_wifi_security_profiler(
+            &run(
+                "/usr/sbin/system_profiler",
+                &["SPAirPortDataType", "-json", "-detailLevel", "basic"],
+            )
+            .unwrap_or_default(),
+            &dev,
+        )
+    } else {
+        state
     };
     match state {
         WifiSecurity::NotConnected => vital(r, "Wi-Fi security", "not connected", None),
@@ -244,8 +297,8 @@ fn wifi(r: &mut SecurityResult) {
                 "sec.wifi_unknown",
                 Severity::Info,
                 "Wi-Fi security type could not be read",
-                "Wi-Fi is up but `ipconfig getsummary` did not report a security type. This is \
-                 NOT a pass — the encryption is unverified.",
+                "Wi-Fi is up, but neither `ipconfig getsummary` nor System Profiler reported a \
+                 security type. This is NOT a pass — the encryption is unverified.",
                 Some("Check System Settings ▸ Wi-Fi ▸ Details ▸ Security, or `sudo wdutil info`."),
             ));
         }

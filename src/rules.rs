@@ -82,9 +82,9 @@ pub const RULES: &[RuleInfo] = &[
     RuleInfo { id: "posture.xprotect_stale", category: "posture", severity: "medium", source: "XProtect.bundle mtime", detects: "Malware definitions months old — background updates broken" },
     RuleInfo { id: "posture.mdm_profiles", category: "posture", severity: "info", source: "profiles list", detects: "Configuration profiles installed (settings that 'won't stick')" },
     // ── security (`mactriage security`; also part of a full scan) ───────────
-    RuleInfo { id: "sec.wifi_open", category: "security", severity: "high", source: "ipconfig getsummary <wifi>", detects: "Connected Wi-Fi has no encryption" },
-    RuleInfo { id: "sec.wifi_weak", category: "security", severity: "low/medium", source: "ipconfig getsummary <wifi>", detects: "WEP / WPA1 / TKIP-mixed, or OWE enhanced-open Wi-Fi" },
-    RuleInfo { id: "sec.wifi_unknown", category: "security", severity: "info", source: "ipconfig getsummary <wifi>", detects: "Wi-Fi up but its security type is unreadable (unverified, not a pass)" },
+    RuleInfo { id: "sec.wifi_open", category: "security", severity: "high", source: "ipconfig getsummary <wifi>; system_profiler SPAirPortDataType as fallback", detects: "Connected Wi-Fi has no encryption" },
+    RuleInfo { id: "sec.wifi_weak", category: "security", severity: "low/medium", source: "ipconfig getsummary <wifi>; system_profiler SPAirPortDataType as fallback", detects: "WEP / WPA1 / TKIP-mixed, or OWE enhanced-open Wi-Fi" },
+    RuleInfo { id: "sec.wifi_unknown", category: "security", severity: "info", source: "ipconfig getsummary <wifi>; system_profiler SPAirPortDataType as fallback", detects: "Wi-Fi up but its security type is unreadable (unverified, not a pass)" },
     RuleInfo { id: "sec.firewall_stealth_off", category: "security", severity: "low", source: "socketfilterfw --getstealthmode", detects: "Firewall on but answers probes (stealth off)" },
     RuleInfo { id: "sec.firewall_allow_signed", category: "security", severity: "info", source: "socketfilterfw --getallowsigned", detects: "Any downloaded signed app may accept inbound connections" },
     RuleInfo { id: "sec.remote_access", category: "security", severity: "medium", source: "launchctl print-disabled system, pgrep ARDAgent", detects: "SSH / Screen Sharing / SMB / Remote Apple Events / ARD switched on (notes MDM-set)" },

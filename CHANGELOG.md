@@ -27,6 +27,11 @@
   counts crash signals and held-back restarts. SIGKILL, SIGTERM and a normal
   exit code do not count, because supervisors such as mds send them on a
   healthy Mac. One or two held-back restarts without a crash are Low.
+- The Wi-Fi security check works on macOS 27. There `ipconfig getsummary`
+  answers UNRECOGNIZED for the security type, so `sec.wifi_open` and
+  `sec.wifi_weak` could never fire, and every audit reported the type as
+  unreadable. When that happens, the audit now asks System Profiler, which
+  needs about 12 seconds more.
 
 ## 0.15.1 (2026-11-23)
 
